@@ -14,7 +14,6 @@
 #define IDI_NAMESPACE                   207
 #define IDI_ICON1                       208
 #define IDI_PROPERTY2                   208
-#define IDI_ICON2                       209
 #define IDI_OBJECT                      209
 #define IDC_COPYRIGHT                   1000
 #define IDC_VERSION                     1001
@@ -23,13 +22,16 @@
 #define ID_OPTIONS_FONT                 32776
 #define ID_OPTIONS_SINGLEINSTANCE       32777
 #define ID_FILE_RUNASADMINISTRATOR      32778
+#define ID_VIEW_SYSTEMCLASSES           32780
+#define ID_VIEW_SYSTEMPROPERTIES        32781
+#define ID_VIEW_NAMESPACESINLIST        32782
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        210
-#define _APS_NEXT_COMMAND_VALUE         32780
+#define _APS_NEXT_COMMAND_VALUE         32783
 #define _APS_NEXT_CONTROL_VALUE         1003
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

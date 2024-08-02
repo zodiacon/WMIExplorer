@@ -134,12 +134,13 @@ std::vector<WMIProperty> WMIHelper::EnumProperties(IWbemClassObject* pObj) {
 std::vector<WMIMethod> WMIHelper::EnumMethods(IWbemClassObject* pObj, bool localOnly, bool inheritedOnly) {
 	std::vector<WMIMethod> methods;
 	pObj->BeginMethodEnumeration((localOnly ? WBEM_FLAG_LOCAL_ONLY : 0) | (inheritedOnly ? WBEM_FLAG_PROPAGATED_ONLY : 0));
+	CComBSTR name;
 	WMIMethod method;
-	while (S_OK == pObj->NextMethod(0, &method.Name, &method.spInParams, &method.spOutParams)) {
-		pObj->GetMethodOrigin(method.Name.m_str, &method.ClassName);
+	while (S_OK == pObj->NextMethod(0, &name, method.spInParams.addressof(), method.spOutParams.addressof())) {
+		method.Name = name.m_str;
+		pObj->GetMethodOrigin(method.Name.c_str(), &name);
+		method.ClassName = name.m_str;
 		methods.push_back(std::move(method));
-		method.spInParams = nullptr;
-		method.spOutParams = nullptr;
 	}
 	pObj->EndMethodEnumeration();
 	return methods;

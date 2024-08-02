@@ -76,8 +76,7 @@ BEGIN
         MENUITEM "&Run As Administrator",       ID_FILE_RUNASADMINISTRATOR
         MENUITEM SEPARATOR
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
-        MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
-        MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
+        MENUITEM "&Save...\tCtrl+S",            ID_FILE_SAVE
         MENUITEM SEPARATOR
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
@@ -87,6 +86,10 @@ BEGIN
     END
     POPUP "&View"
     BEGIN
+        MENUITEM "&System Classes",             ID_VIEW_SYSTEMCLASSES
+        MENUITEM "System &Properties",          ID_VIEW_SYSTEMPROPERTIES
+        MENUITEM "&Namespaces in List",         ID_VIEW_NAMESPACESINLIST
+        MENUITEM SEPARATOR
         MENUITEM "&Refresh\tF5",                ID_VIEW_REFRESH
         MENUITEM SEPARATOR
         MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
@@ -95,8 +98,8 @@ BEGIN
     POPUP "&Options"
     BEGIN
         MENUITEM "&Always On Top",              ID_OPTIONS_ALWAYSONTOP
-        MENUITEM "&Font...",                    ID_OPTIONS_FONT
         MENUITEM "&Single Instance",            ID_OPTIONS_SINGLEINSTANCE
+        MENUITEM "&Font...",                    ID_OPTIONS_FONT
     END
     POPUP "&Help"
     BEGIN
@@ -215,11 +218,11 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName", "Scorpio Software (Pavel Yosifovich)"
+            VALUE "CompanyName", "Scorpio Software"
             VALUE "FileDescription", "WMI Explorer"
             VALUE "FileVersion", "0.1.0.0"
             VALUE "InternalName", "WMIExp"
-            VALUE "LegalCopyright", "©2021 Pavel Yosifovich"
+            VALUE "LegalCopyright", "©2021-2024 Pavel Yosifovich"
             VALUE "OriginalFilename", "WMIExp.exe"
             VALUE "ProductName", "WMI Explorer"
             VALUE "ProductVersion", "0.1"

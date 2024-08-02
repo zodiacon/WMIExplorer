@@ -36,6 +36,9 @@ public:
 		MESSAGE_HANDLER(WM_INSTANCES, OnAddInstances)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		COMMAND_ID_HANDLER(ID_VIEW_SYSTEMCLASSES, OnViewSystemClasses)
+		COMMAND_ID_HANDLER(ID_VIEW_SYSTEMPROPERTIES, OnViewSystemProperties)
+		COMMAND_ID_HANDLER(ID_VIEW_NAMESPACESINLIST, OnViewNamespacesInList)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
 		COMMAND_ID_HANDLER(ID_VIEW_TOOLBAR, OnViewToolBar)
 		COMMAND_ID_HANDLER(ID_VIEW_STATUS_BAR, OnViewStatusBar)
@@ -59,8 +62,8 @@ private:
 		Computer, Namespace, Class, Property, Method, Instance, HasChildren = 0x80
 	};
 	struct WmiItem {
-		CString Name;
-		CComPtr<IWbemClassObject> Object, Object2;
+		std::wstring Name;
+		wil::com_ptr<IWbemClassObject> Object, Object2;
 		CIMTYPE CimType;
 		NodeType Type;
 		CComVariant Value;
@@ -96,11 +99,15 @@ private:
 	LRESULT OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnTreeItemExpanding(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnTreeSelChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	LRESULT OnViewSystemClasses(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnViewSystemProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnViewNamespacesInList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	CCommandBarCtrl m_CmdBar;
 	CSplitterWindow m_Splitter;
 	CHorSplitterWindow m_DetailSplitter;
 	CTreeViewCtrlEx m_Tree;
+	CPaneContainer m_TreePane;
 	CListViewCtrl m_List;
 	CListViewCtrl m_InstanceList;
 	CMultiPaneStatusBarCtrl m_StatusBar;

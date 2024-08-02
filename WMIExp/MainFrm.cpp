@@ -24,7 +24,7 @@ CString CMainFrame::GetColumnText(HWND h, int row, int col) const {
 	if (h == m_List) {
 		auto& item = m_Items[row];
 		switch (GetColumnManager(h)->GetColumnTag<ColumnType>(col)) {
-			case ColumnType::Name: return item.Name;
+			case ColumnType::Name: return item.Name.c_str();
 			case ColumnType::Type: return NodeTypeToText(item.Type);
 			case ColumnType::CimType:
 				if (item.Type == NodeType::Property) {
@@ -47,7 +47,7 @@ int CMainFrame::GetRowImage(HWND h, int row) const {
 			case NodeType::Class: return 1;
 			case NodeType::Instance: return 5;
 			case NodeType::Property:
-				return m_Items[row].Name.Left(2) == L"__" ? 4 : 2;
+				return m_Items[row].Name.substr(0, 2) == L"__" ? 4 : 2;
 
 			case NodeType::Method: return 3;
 		}
@@ -77,7 +77,7 @@ DWORD CMainFrame::OnItemPrePaint(int, LPNMCUSTOMDRAW cd) {
 	CRect rcIcon(CPoint(rc.left + 2, rc.top + 2), CSize(16, 16));
 	m_List.GetImageList(LVSIL_SMALL).DrawEx(5, dc, rcIcon, CLR_NONE, CLR_NONE, ILD_NORMAL);
 	rc.left += 24;
-	dc.DrawText(item.Name, -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+	dc.DrawText(item.Name.c_str(), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
 	return CDRF_SKIPDEFAULT;
 }
@@ -139,10 +139,10 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 //	m_StatusBar.SetParts(_countof(panes), panes);
 
 	m_hWndClient = m_Splitter.Create(m_hWnd, rcDefault, nullptr,
-		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, WS_EX_CLIENTEDGE);
+		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0);
 
 	m_Tree.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN |
-		TVS_HASBUTTONS | TVS_LINESATROOT | TVS_HASLINES | TVS_SHOWSELALWAYS, 0, TreeId);
+		TVS_HASBUTTONS | TVS_LINESATROOT | TVS_HASLINES | TVS_SHOWSELALWAYS, WS_EX_CLIENTEDGE, TreeId);
 	m_Tree.SetExtendedStyle(TVS_EX_DOUBLEBUFFER | TVS_EX_RICHTOOLTIP, 0);
 
 	m_DetailSplitter.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
@@ -160,7 +160,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	//::SetWindowTheme(m_Tree, L"Explorer", nullptr);
 
 	m_List.Create(m_DetailSplitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN
-		| LVS_OWNERDATA | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS, 0);
+		| LVS_OWNERDATA | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS, WS_EX_CLIENTEDGE);
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP);
 	m_List.SetImageList(images, LVSIL_SMALL);
 	//::SetWindowTheme(m_List, L"Explorer", nullptr);
@@ -175,7 +175,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	cm->UpdateColumns();
 
 	m_InstanceList.Create(m_DetailSplitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN
-		| LVS_OWNERDATA | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS, 0);
+		| LVS_OWNERDATA | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS, WS_EX_CLIENTEDGE);
 	m_InstanceList.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP);
 	cm = GetColumnManager(m_InstanceList);
 	cm->AddColumn(L"Property", LVCFMT_LEFT, 150, ColumnType::Name);
@@ -197,6 +197,9 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	//
 	UISetCheck(ID_OPTIONS_ALWAYSONTOP, settings.AlwaysOnTop());
 	UISetCheck(ID_OPTIONS_SINGLEINSTANCE, settings.SingleInstance());
+	UISetCheck(ID_VIEW_SYSTEMPROPERTIES, settings.ViewSystemProperties());
+	UISetCheck(ID_VIEW_SYSTEMCLASSES, settings.ViewSystemClasses());
+	UISetCheck(ID_VIEW_NAMESPACESINLIST, settings.ShowNamespacesInList());
 
 	if (settings.AlwaysOnTop())
 		SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
@@ -299,6 +302,30 @@ LRESULT CMainFrame::OnTreeItemExpanding(int, LPNMHDR hdr, BOOL&) {
 
 LRESULT CMainFrame::OnTreeSelChanged(int, LPNMHDR, BOOL&) {
 	SetTimer(2, 200, nullptr);
+	return 0;
+}
+
+LRESULT CMainFrame::OnViewSystemClasses(WORD, WORD id, HWND, BOOL&) {
+	bool view;
+	AppSettings::Get().ViewSystemClasses(view = !AppSettings::Get().ViewSystemClasses());
+	UISetCheck(id, view);
+	UpdateList();
+	return 0;
+}
+
+LRESULT CMainFrame::OnViewSystemProperties(WORD, WORD id, HWND, BOOL&) {
+	bool view;
+	AppSettings::Get().ViewSystemProperties(view = !AppSettings::Get().ViewSystemProperties());
+	UISetCheck(id, view);
+	UpdateList();
+	return 0;
+}
+
+LRESULT CMainFrame::OnViewNamespacesInList(WORD, WORD id, HWND, BOOL&) {
+	bool view;
+	AppSettings::Get().ShowNamespacesInList(view = !AppSettings::Get().ShowNamespacesInList());
+	UISetCheck(id, view);
+	UpdateList();
 	return 0;
 }
 
@@ -438,7 +465,7 @@ void CMainFrame::InitTree() {
 }
 
 void CMainFrame::BuildTree(IWbemServices* pWmi, HTREEITEM hParent) {
-	auto classes = WMIHelper::EnumClasses(pWmi, true);
+	auto classes = WMIHelper::EnumClasses(pWmi, true, AppSettings::Get().ViewSystemClasses());
 	for (auto& spObj : classes) {
 		auto name = WMIHelper::GetStringProperty(spObj, L"__CLASS");
 		auto hItem = InsertTreeItem(name, 1, hParent, NodeType::Class);
@@ -454,10 +481,11 @@ void CMainFrame::BuildTree(IWbemServices* pWmi, HTREEITEM hParent) {
 		if (FAILED(hr))
 			continue;
 
-		if (IsChildNamespaceOrClass(spNamespace))
+		if (IsChildNamespaceOrClass(spNamespace)) {
 			InsertTreeItem(L"\\\\", 0, hItem, NodeType::HasChildren);
+		}
 	}
-	m_Tree.SortChildren(hParent);
+	//m_Tree.SortChildren(hParent);
 }
 
 bool CMainFrame::IsChildNamespaceOrClass(IWbemServices* pWmi) const {
@@ -470,10 +498,13 @@ void CMainFrame::UpdateList() {
 	m_List.SetItemCount(0);
 	m_Items.clear();
 
+	auto& settings = AppSettings::Get();
 	if (m_spCurrentClass) {
 		CString name;
 		m_Tree.GetItemText(m_Tree.GetSelectedItem(), name);
 		for (auto& prop : WMIHelper::EnumProperties(m_spCurrentClass)) {
+			if (!settings.ViewSystemProperties() && CString(prop.Name).Left(2) == L"__")
+				continue;
 			WmiItem item;
 			item.Name = prop.Name;
 			item.Type = NodeType::Property;
@@ -487,33 +518,25 @@ void CMainFrame::UpdateList() {
 			item.Type = NodeType::Method;
 			item.Object = method.spInParams;
 			item.Object2 = method.spOutParams;
-			item.Value = method.ClassName;
+			item.Value = method.ClassName.c_str();
 			m_Items.push_back(std::move(item));
 		}
 		WMIHelper::EnumInstancesAsync(m_hWnd, WM_INSTANCES, name, m_spCurrentNamespace, false);
-		//for (auto& inst : WMIHelper::EnumInstances(name, m_spCurrentNamespace, false)) {
-		//	WmiItem item;
-		//	item.Type = NodeType::Instance;
-		//	item.Object = inst;
-		//	CComBSTR text;
-		//	inst->GetObjectText(0, &text);
-		//	item.Name = text;
-		//	m_Items.push_back(std::move(item));
-		//}
 	}
 	else {
 		if (m_spCurrentNamespace == nullptr)
 			return;
 
-		for (auto& ns : WMIHelper::EnumNamespaces(m_spCurrentNamespace)) {
-			WmiItem item;
-			CComBSTR name;
-			item.Name = WMIHelper::GetStringProperty(ns, L"NAME");
-			item.Object = ns;
-			item.Type = NodeType::Namespace;
-			m_Items.push_back(std::move(item));
+		if (settings.ShowNamespacesInList()) {
+			for (auto& ns : WMIHelper::EnumNamespaces(m_spCurrentNamespace)) {
+				WmiItem item;
+				CComBSTR name;
+				item.Name = WMIHelper::GetStringProperty(ns, L"NAME");
+				item.Object = ns;
+				item.Type = NodeType::Namespace;
+				m_Items.push_back(std::move(item));
+			}
 		}
-
 		for (auto& cls : WMIHelper::EnumClasses(m_spCurrentNamespace, true)) {
 			WmiItem item;
 			CComBSTR name;
@@ -613,7 +636,7 @@ CString CMainFrame::GetFullPath(HTREEITEM hItem) const {
 }
 
 HTREEITEM CMainFrame::InsertTreeItem(PCWSTR text, int image, HTREEITEM hParent, NodeType type) {
-	auto hItem = m_Tree.InsertItem(text, image, image, hParent, TVI_LAST);
+	auto hItem = m_Tree.InsertItem(text, image, image, hParent, TVI_SORT);
 	ATLASSERT(hItem);
 	m_Tree.SetItemData(hItem, static_cast<ULONG_PTR>(type));
 	return hItem;

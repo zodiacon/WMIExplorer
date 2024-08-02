@@ -1,5 +1,7 @@
 #pragma once
 
+#include <wil\com.h>
+
 struct WMIProperty {
 	CComBSTR Name;
 	CComVariant Value;
@@ -8,9 +10,9 @@ struct WMIProperty {
 };
 
 struct WMIMethod {
-	CComBSTR Name;
-	CComPtr<IWbemClassObject> spInParams, spOutParams;
-	CComBSTR ClassName;
+	std::wstring Name;
+	wil::com_ptr<IWbemClassObject> spInParams, spOutParams;
+	std::wstring ClassName;
 };
 
 struct IObjectsCallback {
