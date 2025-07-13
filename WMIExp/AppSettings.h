@@ -8,7 +8,7 @@ struct AppSettings : Settings {
 		SETTING(AlwaysOnTop, 0, SettingType::Bool);
 		SETTING(SingleInstance, 0, SettingType::Bool);
 		SETTING(ViewSystemClasses, 0, SettingType::Bool);
-		SETTING(ViewSystemProperties, 1, SettingType::Bool);
+		SETTING(ViewSystemProperties, 0, SettingType::Bool);
 		SETTING(ShowNamespacesInList, 0, SettingType::Bool);
 	END_SETTINGS
 

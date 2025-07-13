@@ -29,8 +29,8 @@ private:
 			m_Objects.push_back(apObjArray[i]);
 		return S_OK;
 	}
-	HRESULT __stdcall SetStatus(long lFlags, HRESULT hResult, BSTR strParam, IWbemClassObject* pObjParam) override {
-		if (lFlags == WBEM_STATUS_COMPLETE && !m_Objects.empty()) {
+	HRESULT __stdcall SetStatus(long lFlags, HRESULT hr, BSTR strParam, IWbemClassObject* pObjParam) override {
+		if (hr == S_OK && lFlags == WBEM_STATUS_COMPLETE) {
 			AddRef();
 			::PostMessage(m_hWnd, m_Msg, 0, reinterpret_cast<LPARAM>(static_cast<IObjectsCallback*>(this)));
 		}
