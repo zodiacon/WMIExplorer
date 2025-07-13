@@ -98,8 +98,6 @@ private:
 	void TreeItemSelected(HTREEITEM hItem);
 	void RefreshList();
 
-	CString GetFullPath(HTREEITEM hItem) const;
-
 	HTREEITEM InsertTreeItem(PCWSTR text, int image, HTREEITEM hParent, NodeType type);
 	NodeType GetTreeNodeType(HTREEITEM hItem) const;
 	void SetAlwaysOnTop(bool onTop);
@@ -137,5 +135,6 @@ private:
 	CComPtr<IWbemServices> m_spWmi;
 	CComPtr<IWbemServices> m_spCurrentNamespace;
 	CComPtr<IWbemClassObject> m_spCurrentClass, m_spCurrentEnumClass;
+	const CString m_RootName{ L"ROOT" };
 	bool m_EnumInstancesInProgress{ false };
 };

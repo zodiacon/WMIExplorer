@@ -137,7 +137,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	m_Tree.SetExtendedStyle(TVS_EX_DOUBLEBUFFER | TVS_EX_RICHTOOLTIP, 0);
 
 	m_DetailSplitter.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
-	m_DetailSplitter.SetSplitterPosPct(60);
+	m_DetailSplitter.SetSplitterPosPct(55);
 
 	CImageList images;
 	images.Create(16, 16, ILC_COLOR32 | ILC_COLOR | ILC_MASK, 10, 4);
@@ -193,7 +193,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 	UpdateLayout();
 
-	WMIHelper::Init(nullptr, L"ROOT", &m_spWmi);
+	WMIHelper::Init(nullptr, m_RootName, &m_spWmi);
 	InitTree();
 
 	return 0;
@@ -284,12 +284,13 @@ LRESULT CMainFrame::OnTreeItemExpanding(int, LPNMHDR hdr, BOOL&) {
 	if (m_Tree.GetItemText(m_Tree.GetChildItem(hItem), text) && text != L"\\\\")
 		return 0;
 
-	auto path = GetFullPath(hItem);
+	auto path = GetFullItemPath(m_Tree, hItem);
+	path = path.Mid(path.Find(L'\\') + 1);
 	CComPtr<IWbemServices> spNamespace;
 	CWaitCursor wait;
 	auto hr = m_spWmi->OpenNamespace(CComBSTR(path), 0, nullptr, &spNamespace, nullptr);
 	if (SUCCEEDED(hr)) {
-		m_NamespacePath = L"ROOT\\" + path;
+		m_NamespacePath = m_RootName + L"\\" + path;
 		m_Tree.DeleteItem(m_Tree.GetChildItem(hItem));
 		m_spCurrentNamespace = spNamespace;
 		BuildTree(spNamespace, hItem);
@@ -475,7 +476,7 @@ void CMainFrame::InitTree() {
 	m_spCurrentNamespace = m_spWmi;
 	m_Tree.LockWindowUpdate();
 	m_Tree.DeleteAllItems();
-	m_hRoot = InsertTreeItem(L"ROOT", 0, TVI_ROOT, NodeType::Namespace);
+	m_hRoot = InsertTreeItem(m_RootName, 0, TVI_ROOT, NodeType::Namespace);
 	if (m_spWmi) {
 		BuildTree(m_spWmi, m_hRoot);
 		m_Tree.Expand(m_hRoot, TVE_EXPAND);
@@ -585,18 +586,34 @@ void CMainFrame::DoSort(const SortInfo* si) {
 }
 
 CString CMainFrame::GetObjectDetails(WmiItem const& item) const {
-	if (item.Type != NodeType::Property)
-		return L"";
+	switch (item.Type) {
+		case NodeType::Property:
+		{
+			if (m_ObjPropValues.empty())
+				return L"";
 
-	if (m_ObjPropValues.empty())
-		return L"";
+			auto it = std::find_if(m_ObjPropValues.begin(), m_ObjPropValues.end(), [&](auto p) { return p.Name == item.Name.c_str(); });
+			if (it == m_ObjPropValues.end())
+				return L"";
 
-	auto it = std::find_if(m_ObjPropValues.begin(), m_ObjPropValues.end(), [&](auto p) { return p.Name == item.Name.c_str(); });
-	if (it == m_ObjPropValues.end())
-		return L"";
+			auto value = it->Value;
+			return VariantToString(value);
+		}
 
-	auto value = it->Value;
-	return VariantToString(value);
+		case NodeType::Method:
+			if (item.Object) {	// in params
+				auto props = WMIHelper::EnumProperties(item.Object.get());
+				CString text;
+				for (auto& p : props) {
+					text += CimTypeToString(p.Type) + L" " + p.Name + L", ";
+				}
+				if (!text.IsEmpty())
+					text = text.Left(text.GetLength() - 2);
+				return L"(" + text + L")";
+			}
+			break;
+	}
+	return L"";
 }
 
 CString CMainFrame::GetObjectValue(WmiItem const& item) const {
@@ -618,14 +635,15 @@ CString CMainFrame::GetObjectValue(WmiItem const& item) const {
 	return L"";
 }
 
-void CMainFrame::TreeItemSelected(HTREEITEM /* hItem */) {
-	auto hItem = m_Tree.GetSelectedItem();
+void CMainFrame::TreeItemSelected(HTREEITEM hItem) {
+	if(hItem == nullptr)
+		hItem = m_Tree.GetSelectedItem();
 	if (hItem == nullptr) {
 		m_spCurrentClass = nullptr;
 		m_spCurrentNamespace = nullptr;
 		return;
 	}
-	auto path = GetFullPath(hItem);
+	auto path = GetFullItemPath(m_Tree, hItem);
 	auto type = GetTreeNodeType(hItem);
 	CString name;
 	m_Tree.GetItemText(hItem, name);
@@ -633,29 +651,32 @@ void CMainFrame::TreeItemSelected(HTREEITEM /* hItem */) {
 		case NodeType::Namespace:
 		{
 			if (hItem == m_hRoot) {
-				m_NamespacePath = L"ROOT";
+				m_NamespacePath = m_RootName;
 				m_spCurrentNamespace = m_spWmi;
 			}
 			else {
 				CComPtr<IWbemServices> spNamespace;
+				path = path.Mid(path.Find(L'\\') + 1);
 				m_spWmi->OpenNamespace(CComBSTR(path), 0, nullptr, &spNamespace, nullptr);
 				if (spNamespace) {
 					m_spCurrentNamespace = spNamespace;
-					m_NamespacePath = L"ROOT\\" + path;
+					m_NamespacePath = m_RootName + L"\\" + path;
 				}
 			}
 			m_spCurrentClass = nullptr;
 			break;
 		}
 		case NodeType::Class:
+			if(m_NamespacePath != GetFullItemPath(m_Tree, m_Tree.GetParentItem(hItem)))
+				TreeItemSelected(m_Tree.GetParentItem(hItem));
 			m_spCurrentClass = nullptr;
 			m_spCurrentNamespace->GetObject(CComBSTR(name), 0, nullptr, &m_spCurrentClass, nullptr);
 			if (m_spCurrentClass) {
 				m_spCurrentEnumClass = m_spCurrentClass;
 				m_InstanceList.SetItemCount(0);
-				WMIHelper::EnumInstancesAsync(m_hWnd, WM_INSTANCES, name, m_spCurrentNamespace, false);
 				m_EnumInstancesInProgress = true;
 				m_StatusBar.SetText(2, L"Enumerating Objects...");
+				WMIHelper::EnumInstancesAsync(m_hWnd, WM_INSTANCES, name, m_spCurrentNamespace, false);
 			}
 			else {
 				m_List.SetItemCount(0);
@@ -679,18 +700,6 @@ void CMainFrame::RefreshList() {
 	m_List.SetItemCountEx(static_cast<int>(m_Items.size()), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
 	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
 	m_StatusBar.SetText(1, std::format(L"{} Items", m_Items.size()).c_str());
-}
-
-CString CMainFrame::GetFullPath(HTREEITEM hItem) const {
-	CString path, text;
-	while (hItem) {
-		m_Tree.GetItemText(hItem, text);
-		if (text == L"ROOT")
-			break;
-		path = text + L"\\" + path;
-		hItem = m_Tree.GetParentItem(hItem);
-	}
-	return path.TrimRight(L"\\");
 }
 
 HTREEITEM CMainFrame::InsertTreeItem(PCWSTR text, int image, HTREEITEM hParent, NodeType type) {
