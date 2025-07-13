@@ -8,12 +8,14 @@
 #include "WMIHelper.h"
 #include <OwnerDrawnMenu.h>
 #include <CustomSplitterWindow.h>
+#include <TreeViewHelper.h>
 
 class CMainFrame :
 	public CFrameWindowImpl<CMainFrame>,
 	public CAutoUpdateUI<CMainFrame>,
 	public CVirtualListView<CMainFrame>,
 	public COwnerDrawnMenu<CMainFrame>,
+	public CTreeViewHelper<CMainFrame>,
 	public CMessageFilter, 
 	public CIdleHandler {
 public:

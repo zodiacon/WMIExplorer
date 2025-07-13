@@ -193,7 +193,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 		SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
 	UpdateLayout();
-	//	UpdateUI();
+
+	WMIHelper::Init(nullptr, L"ROOT", &m_spWmi);
 	InitTree();
 
 	return 0;
@@ -307,7 +308,21 @@ LRESULT CMainFrame::OnViewSystemClasses(WORD, WORD id, HWND, BOOL&) {
 	bool view;
 	AppSettings::Get().ViewSystemClasses(view = !AppSettings::Get().ViewSystemClasses());
 	UISetCheck(id, view);
-	UpdateList();
+	// recreate tree
+	auto node = m_Tree.GetSelectedItem();
+	CString path;
+	if (node) {
+		path = GetFullItemPath(m_Tree, node);
+	}
+	m_List.SetItemCount(0);
+	m_InstanceList.SetItemCount(0);
+	InitTree();
+	if (!path.IsEmpty()) {
+		node = FindItem(m_Tree, TVI_ROOT, path);
+		if (node)
+			m_Tree.SelectItem(node);
+	}
+
 	return 0;
 }
 
@@ -458,9 +473,9 @@ void CMainFrame::InitToolBar(CToolBarCtrl& tb, int size) {
 }
 
 void CMainFrame::InitTree() {
-	WMIHelper::Init(nullptr, L"ROOT", &m_spWmi);
 	m_spCurrentNamespace = m_spWmi;
 	m_Tree.LockWindowUpdate();
+	m_Tree.DeleteAllItems();
 	m_hRoot = InsertTreeItem(L"ROOT", 0, TVI_ROOT, NodeType::Namespace);
 	if (m_spWmi) {
 		BuildTree(m_spWmi, m_hRoot);
