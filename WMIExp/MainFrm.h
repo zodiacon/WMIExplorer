@@ -137,4 +137,5 @@ private:
 	CComPtr<IWbemServices> m_spWmi;
 	CComPtr<IWbemServices> m_spCurrentNamespace;
 	CComPtr<IWbemClassObject> m_spCurrentClass, m_spCurrentEnumClass;
+	bool m_EnumInstancesInProgress{ false };
 };

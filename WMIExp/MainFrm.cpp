@@ -137,7 +137,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	m_Tree.SetExtendedStyle(TVS_EX_DOUBLEBUFFER | TVS_EX_RICHTOOLTIP, 0);
 
 	m_DetailSplitter.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
-	m_DetailSplitter.SetSplitterPosPct(70);
+	m_DetailSplitter.SetSplitterPosPct(60);
 
 	CImageList images;
 	images.Create(16, 16, ILC_COLOR32 | ILC_COLOR | ILC_MASK, 10, 4);
@@ -158,14 +158,13 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	auto cm = GetColumnManager(m_List);
 	cm->AddColumn(L"Name", LVCFMT_LEFT, 220, ColumnType::Name);
 	cm->AddColumn(L"Type", LVCFMT_LEFT, 110, ColumnType::Type);
-	cm->AddColumn(L"Value", LVCFMT_LEFT, 250, ColumnType::Value);
 	cm->AddColumn(L"CIM Type", LVCFMT_LEFT, 120, ColumnType::CimType);
+	cm->AddColumn(L"Value", LVCFMT_LEFT, 250, ColumnType::Value);
 	cm->AddColumn(L"Property Value", LVCFMT_LEFT, 400, ColumnType::Details);
-	cm->UpdateColumns();
 
 	m_InstanceList.Create(m_DetailSplitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN
 		| LVS_OWNERDATA | LVS_REPORT | LVS_NOSORTHEADER | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS | LVS_SINGLESEL, 0);
-	m_InstanceList.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP);
+	m_InstanceList.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
 	m_InstanceList.SetImageList(images, LVSIL_SMALL);
 	cm = GetColumnManager(m_InstanceList);
 	cm->AddColumn(L"Instance", LVCFMT_LEFT, 800, ColumnType::Name);
@@ -223,6 +222,7 @@ LRESULT CMainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL&) {
 
 LRESULT CMainFrame::OnAddInstances(UINT, WPARAM, LPARAM lp, BOOL& bHandled) {
 	if (m_spCurrentEnumClass == m_spCurrentClass) {
+		m_EnumInstancesInProgress = false;
 		auto cb = reinterpret_cast<IObjectsCallback*>(lp);
 		ATLASSERT(cb);
 
@@ -289,7 +289,6 @@ LRESULT CMainFrame::OnTreeItemExpanding(int, LPNMHDR hdr, BOOL&) {
 	CWaitCursor wait;
 	auto hr = m_spWmi->OpenNamespace(CComBSTR(path), 0, nullptr, &spNamespace, nullptr);
 	if (SUCCEEDED(hr)) {
-		CWaitCursor wait;
 		m_NamespacePath = L"ROOT\\" + path;
 		m_Tree.DeleteItem(m_Tree.GetChildItem(hItem));
 		m_spCurrentNamespace = spNamespace;
@@ -543,8 +542,6 @@ void CMainFrame::UpdateList() {
 			item.Value = method.ClassName.c_str();
 			m_Items.push_back(std::move(item));
 		}
-		m_spCurrentEnumClass = m_spCurrentClass;
-		WMIHelper::EnumInstancesAsync(m_hWnd, WM_INSTANCES, name, m_spCurrentNamespace, false);
 	}
 	else {
 		if (m_spCurrentNamespace == nullptr)
@@ -653,6 +650,21 @@ void CMainFrame::TreeItemSelected(HTREEITEM /* hItem */) {
 		case NodeType::Class:
 			m_spCurrentClass = nullptr;
 			m_spCurrentNamespace->GetObject(CComBSTR(name), 0, nullptr, &m_spCurrentClass, nullptr);
+			if (m_spCurrentClass) {
+				m_spCurrentEnumClass = m_spCurrentClass;
+				m_InstanceList.SetItemCount(0);
+				WMIHelper::EnumInstancesAsync(m_hWnd, WM_INSTANCES, name, m_spCurrentNamespace, false);
+				m_EnumInstancesInProgress = true;
+				m_StatusBar.SetText(2, L"Enumerating Objects...");
+			}
+			else {
+				m_List.SetItemCount(0);
+				m_InstanceList.SetItemCount(0);
+				m_Objects.clear();
+				m_ObjPropValues.clear();
+				m_Items.clear();
+				return;
+			}
 			break;
 
 		default:

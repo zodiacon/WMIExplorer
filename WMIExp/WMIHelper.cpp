@@ -13,6 +13,7 @@ public:
 	void Init(HWND hWnd, UINT msg) {
 		m_hWnd = hWnd;
 		m_Msg = msg;
+		AddRef();
 	}
 
 	int GetObjectCount() const override {
@@ -30,8 +31,7 @@ private:
 		return S_OK;
 	}
 	HRESULT __stdcall SetStatus(long lFlags, HRESULT hr, BSTR strParam, IWbemClassObject* pObjParam) override {
-		if (hr == S_OK && lFlags == WBEM_STATUS_COMPLETE) {
-			AddRef();
+		if (lFlags == WBEM_STATUS_COMPLETE) {
 			::PostMessage(m_hWnd, m_Msg, 0, reinterpret_cast<LPARAM>(static_cast<IObjectsCallback*>(this)));
 		}
 		return S_OK;
@@ -113,7 +113,7 @@ bool WMIHelper::EnumInstancesAsync(HWND hWnd, UINT msg, PCWSTR name, IWbemServic
 	pSink->CreateInstance(&pSink);
 	pSink->Init(hWnd, msg);
 	auto hr = pSvc->CreateInstanceEnumAsync(CComBSTR(name), (deep ? WBEM_FLAG_DEEP : WBEM_FLAG_SHALLOW), nullptr, pSink);
-	if (FAILED(hr))
+	if (hr != S_OK)
 		return false;
 
 	return true;
