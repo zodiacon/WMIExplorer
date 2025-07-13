@@ -1,0 +1,27 @@
+#pragma once
+
+#include "Theme.h"
+
+struct CCustomTreeView : CWindowImpl<CWindow, CTreeViewCtrl> {
+	BEGIN_MSG_MAP(CCustomTreeView)
+		MESSAGE_HANDLER(::RegisterWindowMessage(L"WTLHelperUpdateTheme"), OnUpdateTheme)
+	END_MSG_MAP()
+
+	void OnFinalMessage(HWND) override {
+		delete this;
+	}
+
+	void Init() {
+		auto theme = ThemeHelper::GetCurrentTheme();
+		SetBkColor(theme->BackColor);
+		SetTextColor(theme->TextColor);
+	}
+
+	LRESULT OnUpdateTheme(UINT /*uMsg*/, WPARAM wp, LPARAM lParam, BOOL& /*bHandled*/) {
+		auto theme = reinterpret_cast<Theme*>(lParam);
+		SetBkColor(theme->BackColor);
+		SetTextColor(theme->TextColor);
+
+		return 0;
+	}
+};

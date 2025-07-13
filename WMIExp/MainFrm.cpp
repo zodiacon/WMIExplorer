@@ -9,7 +9,7 @@
 #include "SecurityHelper.h"
 #include "AppSettings.h"
 #include "IconHelper.h"
-#include "WMIHelper.h"
+#include <SortHelper.h>
 
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg) {
 	return CFrameWindowImpl<CMainFrame>::PreTranslateMessage(pMsg);
@@ -21,9 +21,10 @@ BOOL CMainFrame::OnIdle() {
 }
 
 CString CMainFrame::GetColumnText(HWND h, int row, int col) const {
+	auto column = GetColumnManager(h)->GetColumnTag<ColumnType>(col);
 	if (h == m_List) {
 		auto& item = m_Items[row];
-		switch (GetColumnManager(h)->GetColumnTag<ColumnType>(col)) {
+		switch (column) {
 			case ColumnType::Name: return item.Name.c_str();
 			case ColumnType::Type: return NodeTypeToText(item.Type);
 			case ColumnType::CimType:
@@ -37,10 +38,17 @@ CString CMainFrame::GetColumnText(HWND h, int row, int col) const {
 			case ColumnType::Details: return GetObjectDetails(item);
 		}
 	}
+	else {
+		ATLASSERT(h == m_InstanceList);
+		auto& item = m_Objects[row];
+		switch (column) {
+			case ColumnType::Name: return item.Name.c_str();
+		}
+	}
 	return L"";
 }
 
-int CMainFrame::GetRowImage(HWND h, int row) const {
+int CMainFrame::GetRowImage(HWND h, int row, int) const {
 	if (h == m_List) {
 		switch (m_Items[row].Type) {
 			case NodeType::Namespace: return 0;
@@ -52,34 +60,21 @@ int CMainFrame::GetRowImage(HWND h, int row) const {
 			case NodeType::Method: return 3;
 		}
 	}
+	else {
+		return 5;
+	}
 	return -1;
 }
 
-DWORD CMainFrame::OnPrePaint(int, LPNMCUSTOMDRAW cd) {
-	if (cd->hdr.hwndFrom != m_List)
-		return CDRF_DODEFAULT;
+void CMainFrame::OnStateChanged(HWND h, int from, int to, UINT oldState, UINT newState) {
+	if (h != m_InstanceList)
+		return;
 
-	return CDRF_NOTIFYITEMDRAW;
-}
-
-DWORD CMainFrame::OnItemPrePaint(int, LPNMCUSTOMDRAW cd) {
-	int index = (int)cd->dwItemSpec;
-	auto& item = m_Items[index];
-	if (item.Type != NodeType::Instance)
-		return CDRF_DODEFAULT;
-
-	CDCHandle dc(cd->hdc);
-	dc.SetBkMode(TRANSPARENT);
-	bool selected = m_List.GetItemState(index, LVIS_SELECTED) > 0;
-	auto& rc = cd->rc;
-	dc.FillSolidRect(&rc, ::GetSysColor(selected ? COLOR_HIGHLIGHT : COLOR_WINDOW));
-	dc.SetTextColor(::GetSysColor(selected ? COLOR_HIGHLIGHTTEXT : COLOR_WINDOWTEXT));
-	CRect rcIcon(CPoint(rc.left + 2, rc.top + 2), CSize(16, 16));
-	m_List.GetImageList(LVSIL_SMALL).DrawEx(5, dc, rcIcon, CLR_NONE, CLR_NONE, ILD_NORMAL);
-	rc.left += 24;
-	dc.DrawText(item.Name.c_str(), -1, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-
-	return CDRF_SKIPDEFAULT;
+	int index = m_InstanceList.GetSelectedIndex();
+	if (index >= 0) {
+		m_ObjPropValues = WMIHelper::EnumProperties(m_Objects[index].Object.get());
+		m_List.SetItemCountEx(m_List.GetItemCount(), LVSICF_NOSCROLL);
+	}
 }
 
 LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -112,14 +107,11 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 		SetWindowText(text);
 	}
 
-	HWND hWndCmdBar = m_CmdBar.Create(m_hWnd, rcDefault, nullptr, ATL_SIMPLE_CMDBAR_PANE_STYLE);
-
-	m_CmdBar.SetAlphaImages(true);
-	m_CmdBar.AttachMenu(menu);
 	InitCommandBar();
+	SetCheckIcon(IDI_CHECK, IDI_RADIO);
 
 	UIAddMenu(menu);
-	SetMenu(nullptr);
+	AddMenu(menu);
 
 	CToolBarCtrl tb;
 	tb.Create(m_hWnd, nullptr, nullptr, ATL_SIMPLE_TOOLBAR_PANE_STYLE, 0, ATL_IDW_TOOLBAR);
@@ -127,7 +119,6 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	UIAddToolBar(tb);
 
 	CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
-	AddSimpleReBarBand(hWndCmdBar);
 	AddSimpleReBarBand(tb, nullptr, TRUE);
 
 	CReBarCtrl rb(m_hWndToolBar);
@@ -135,14 +126,14 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 	CreateSimpleStatusBar(ATL_IDS_IDLEMESSAGE, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | SBARS_SIZEGRIP | SBT_TOOLTIPS);
 	m_StatusBar.SubclassWindow(m_hWndStatusBar);
-//	int panes[] = { 24, 1300 };
-//	m_StatusBar.SetParts(_countof(panes), panes);
+	//	int panes[] = { 24, 1300 };
+	//	m_StatusBar.SetParts(_countof(panes), panes);
 
 	m_hWndClient = m_Splitter.Create(m_hWnd, rcDefault, nullptr,
-		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0);
+		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, WS_EX_CLIENTEDGE);
 
 	m_Tree.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN |
-		TVS_HASBUTTONS | TVS_LINESATROOT | TVS_HASLINES | TVS_SHOWSELALWAYS, WS_EX_CLIENTEDGE, TreeId);
+		TVS_HASBUTTONS | TVS_LINESATROOT | TVS_HASLINES | TVS_SHOWSELALWAYS, 0, TreeId);
 	m_Tree.SetExtendedStyle(TVS_EX_DOUBLEBUFFER | TVS_EX_RICHTOOLTIP, 0);
 
 	m_DetailSplitter.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
@@ -151,8 +142,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	CImageList images;
 	images.Create(16, 16, ILC_COLOR32 | ILC_COLOR | ILC_MASK, 10, 4);
 	UINT icons[] = {
-		IDI_NAMESPACE, IDI_CLASS, IDI_PROPERTY, IDI_METHOD, IDI_PROPERTY2,
-		IDI_OBJECT
+		IDI_NAMESPACE, IDI_CLASS, IDI_PROPERTY, IDI_OBJECT, IDI_PROPERTY2,
+		IDI_METHOD
 	};
 	for (auto icon : icons)
 		images.AddIcon(AtlLoadIconImage(icon, 0, 16, 16));
@@ -160,7 +151,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	//::SetWindowTheme(m_Tree, L"Explorer", nullptr);
 
 	m_List.Create(m_DetailSplitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN
-		| LVS_OWNERDATA | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS, WS_EX_CLIENTEDGE);
+		| LVS_OWNERDATA | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS, 0);
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP);
 	m_List.SetImageList(images, LVSIL_SMALL);
 	//::SetWindowTheme(m_List, L"Explorer", nullptr);
@@ -171,15 +162,15 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	//cm->AddColumn(L"Size", LVCFMT_RIGHT, 70, ColumnType::Size);
 	cm->AddColumn(L"Value", LVCFMT_LEFT, 250, ColumnType::Value);
 	cm->AddColumn(L"CIM Type", LVCFMT_LEFT, 120, ColumnType::CimType);
-	cm->AddColumn(L"Details", LVCFMT_LEFT, 250, ColumnType::Details);
+	cm->AddColumn(L"Property Value", LVCFMT_LEFT, 400, ColumnType::Details);
 	cm->UpdateColumns();
 
 	m_InstanceList.Create(m_DetailSplitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN
-		| LVS_OWNERDATA | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS, WS_EX_CLIENTEDGE);
+		| LVS_OWNERDATA | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS | LVS_SINGLESEL, 0);
 	m_InstanceList.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP);
+	m_InstanceList.SetImageList(images, LVSIL_SMALL);
 	cm = GetColumnManager(m_InstanceList);
-	cm->AddColumn(L"Property", LVCFMT_LEFT, 150, ColumnType::Name);
-	cm->AddColumn(L"Value", LVCFMT_LEFT, 350, ColumnType::Value);
+	cm->AddColumn(L"Instance", LVCFMT_LEFT, 800, ColumnType::Name);
 
 	m_Splitter.SetSplitterPanes(m_Tree, m_DetailSplitter);
 	m_DetailSplitter.SetSplitterPanes(m_List, m_InstanceList);
@@ -205,7 +196,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 		SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
 	UpdateLayout();
-//	UpdateUI();
+	//	UpdateUI();
 	InitTree();
 
 	return 0;
@@ -235,17 +226,19 @@ LRESULT CMainFrame::OnAddInstances(UINT, WPARAM, LPARAM lp, BOOL& bHandled) {
 	ATLASSERT(cb);
 
 	auto count = cb->GetObjectCount();
-	for(auto i = 0; i < count; i++) {
+	m_Objects.clear();
+	m_Objects.reserve(count);
+	for (auto i = 0; i < count; i++) {
 		WmiItem item;
 		item.Type = NodeType::Instance;
 		item.Object = cb->GetItem(i);
 		CComBSTR text;
 		item.Object->GetObjectText(0, &text);
 		item.Name = text;
-		m_Items.push_back(std::move(item));
+		m_Objects.push_back(std::move(item));
 	}
 	cb->Release();
-	RefreshList();
+	m_InstanceList.SetItemCount((int)m_Objects.size());
 
 	return 0;
 }
@@ -408,10 +401,8 @@ void CMainFrame::InitCommandBar() {
 	} cmds[] = {
 		{ ID_FILE_RUNASADMINISTRATOR, 0, IconHelper::GetShieldIcon() },
 		{ ID_EDIT_COPY, IDI_COPY },
-		//{ ID_VIEW_REFRESH, IDI_REFRESH },
-		//{ ID_EDIT_CUT, IDI_CUT },
-		//{ ID_EDIT_DELETE, IDI_DELETE },
-		//{ ID_EDIT_FIND, IDI_FIND },
+		{ ID_VIEW_REFRESH, IDI_REFRESH },
+//		{ ID_EDIT_FIND, IDI_FIND },
 	};
 	for (auto& cmd : cmds) {
 		HICON hIcon = cmd.hIcon;
@@ -419,7 +410,7 @@ void CMainFrame::InitCommandBar() {
 			hIcon = AtlLoadIconImage(cmd.icon, 0, 16, 16);
 			ATLASSERT(hIcon);
 		}
-		m_CmdBar.AddIcon(cmd.icon ? hIcon : cmd.hIcon, cmd.id);
+		AddCommand(cmd.id, cmd.icon ? hIcon : cmd.hIcon);
 	}
 }
 
@@ -549,12 +540,35 @@ void CMainFrame::UpdateList() {
 	RefreshList();
 }
 
-CString CMainFrame::GetObjectDetails(WmiItem const& item) const {
-	switch (item.Type) {
-		case NodeType::Method:
-			return L"Class: " + CString(item.Value.bstrVal);
+void CMainFrame::DoSort(const SortInfo* si) {
+	auto column = GetColumnManager(si->hWnd)->GetColumnTag<ColumnType>(si->SortColumn);
+
+	if (si->hWnd == m_List) {
+		auto sort = [&](const auto& i1, const auto& i2) {
+			switch (column) {
+				case ColumnType::Name: return SortHelper::Sort(i1.Name, i2.Name, si->SortAscending);
+				case ColumnType::Type: return SortHelper::Sort(i1.Type, i2.Type, si->SortAscending);
+			}
+			return false;
+			};
+		std::sort(m_Items.begin(), m_Items.end(), sort);
 	}
-	return L"";
+}
+
+CString CMainFrame::GetObjectDetails(WmiItem const& item) const {
+	if (item.Type != NodeType::Property)
+		return L"";
+
+	if (m_ObjPropValues.empty())
+		return L"";
+
+	auto it = std::find_if(m_ObjPropValues.begin(), m_ObjPropValues.end(), [&](auto p) { return p.Name == item.Name.c_str(); });
+	if (it == m_ObjPropValues.end())
+		return L"";
+
+	auto value = it->Value;
+	value.ChangeType(VT_BSTR);
+	return CString(value.bstrVal);
 }
 
 CString CMainFrame::GetObjectValue(WmiItem const& item) const {
@@ -569,7 +583,7 @@ CString CMainFrame::GetObjectValue(WmiItem const& item) const {
 			}
 			if (value.vt == VT_BOOL)
 				return value.boolVal ? L"True" : L"False";
-			if(SUCCEEDED(value.ChangeType(VT_BSTR)))
+			if (SUCCEEDED(value.ChangeType(VT_BSTR)))
 				return CString(value.bstrVal);
 			break;
 	}

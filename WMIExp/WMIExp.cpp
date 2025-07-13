@@ -4,6 +4,7 @@
 #include "pch.h"
 #include "resource.h"
 #include "MainFrm.h"
+#include <ThemeHelper.h>
 
 CAppModule _Module;
 
@@ -47,6 +48,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lps
 
 	AtlInitCommonControls(ICC_COOL_CLASSES | ICC_BAR_CLASSES | ICC_LISTVIEW_CLASSES | ICC_TREEVIEW_CLASSES);
 
+	ThemeHelper::Init();
 	hr = _Module.Init(nullptr, hInstance);
 	ATLASSERT(SUCCEEDED(hr));
 

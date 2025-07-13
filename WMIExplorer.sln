@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31523.460
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WMIExp", "WMIExp\WMIExp.vcxproj", "{AA7F6FBE-6964-4D88-B8D1-08F906FFFD4A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WTLHelper", "WTLHelper\WTLHelper.vcxproj", "{BE107D73-39AA-4EA8-B7BA-B0E26C018B98}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WTLHelper", "wtlhelper\WTLHelper\WTLHelper.vcxproj", "{AE53419F-A769-4548-8E15-E311904DF7DF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{AA7F6FBE-6964-4D88-B8D1-08F906FFFD4A}.Debug|x64.Build.0 = Debug|x64
 		{AA7F6FBE-6964-4D88-B8D1-08F906FFFD4A}.Release|x64.ActiveCfg = Release|x64
 		{AA7F6FBE-6964-4D88-B8D1-08F906FFFD4A}.Release|x64.Build.0 = Release|x64
-		{BE107D73-39AA-4EA8-B7BA-B0E26C018B98}.Debug|x64.ActiveCfg = Debug|x64
-		{BE107D73-39AA-4EA8-B7BA-B0E26C018B98}.Debug|x64.Build.0 = Debug|x64
-		{BE107D73-39AA-4EA8-B7BA-B0E26C018B98}.Release|x64.ActiveCfg = Release|x64
-		{BE107D73-39AA-4EA8-B7BA-B0E26C018B98}.Release|x64.Build.0 = Release|x64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Debug|x64.ActiveCfg = Debug|x64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Debug|x64.Build.0 = Debug|x64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Release|x64.ActiveCfg = Release|x64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

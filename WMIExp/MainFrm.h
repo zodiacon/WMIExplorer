@@ -4,13 +4,16 @@
 
 #pragma once
 
-#include "VirtualListView.h"
+#include <VirtualListView.h>
+#include "WMIHelper.h"
+#include <OwnerDrawnMenu.h>
+#include <CustomSplitterWindow.h>
 
 class CMainFrame :
 	public CFrameWindowImpl<CMainFrame>,
 	public CAutoUpdateUI<CMainFrame>,
 	public CVirtualListView<CMainFrame>,
-	public CCustomDraw<CMainFrame>,
+	public COwnerDrawnMenu<CMainFrame>,
 	public CMessageFilter, 
 	public CIdleHandler {
 public:
@@ -24,10 +27,10 @@ public:
 	virtual BOOL OnIdle();
 
 	CString GetColumnText(HWND, int row, int col) const;
-	int GetRowImage(HWND, int row) const;
+	int GetRowImage(HWND, int row, int) const;
 
-	DWORD OnPrePaint(int /*idCtrl*/, LPNMCUSTOMDRAW cd);
-	DWORD OnItemPrePaint(int /*idCtrl*/, LPNMCUSTOMDRAW cd);
+	void OnStateChanged(HWND h, int from, int to, UINT oldState, UINT newState);
+	void DoSort(const SortInfo* si);
 
 	BEGIN_MSG_MAP(CMainFrame)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
@@ -46,7 +49,7 @@ public:
 		CHAIN_MSG_MAP(CAutoUpdateUI<CMainFrame>)
 		CHAIN_MSG_MAP(CVirtualListView<CMainFrame>)
 		CHAIN_MSG_MAP(CFrameWindowImpl<CMainFrame>)
-		CHAIN_MSG_MAP(CCustomDraw<CMainFrame>)
+		CHAIN_MSG_MAP(COwnerDrawnMenu<CMainFrame>)
 	END_MSG_MAP()
 
 	// Handler prototypes (uncomment arguments if needed):
@@ -67,6 +70,10 @@ private:
 		CIMTYPE CimType;
 		NodeType Type;
 		CComVariant Value;
+	};
+
+	struct WmiObject {
+		wil::com_ptr<IWbemClassObject> Object;
 	};
 
 	static PCWSTR NodeTypeToText(NodeType type);
@@ -103,15 +110,16 @@ private:
 	LRESULT OnViewSystemProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewNamespacesInList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
-	CCommandBarCtrl m_CmdBar;
-	CSplitterWindow m_Splitter;
-	CHorSplitterWindow m_DetailSplitter;
+	CCustomSplitterWindow m_Splitter;
+	CCustomHorSplitterWindow m_DetailSplitter;
 	CTreeViewCtrlEx m_Tree;
 	CPaneContainer m_TreePane;
 	CListViewCtrl m_List;
 	CListViewCtrl m_InstanceList;
 	CMultiPaneStatusBarCtrl m_StatusBar;
 	std::vector<WmiItem> m_Items;
+	std::vector<WmiItem> m_Objects;
+	std::vector<WMIProperty> m_ObjPropValues;
 	HANDLE m_hSingleInstMutex;
 	HTREEITEM m_hRoot;
 	CString m_NamespacePath;

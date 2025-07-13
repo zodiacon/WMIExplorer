@@ -15,6 +15,9 @@
 #define IDI_ICON1                       208
 #define IDI_PROPERTY2                   208
 #define IDI_OBJECT                      209
+#define IDI_CHECK                       210
+#define IDI_ICON3                       211
+#define IDI_RADIO                       211
 #define IDC_COPYRIGHT                   1000
 #define IDC_VERSION                     1001
 #define IDC_LINK                        1002
@@ -30,7 +33,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        210
+#define _APS_NEXT_RESOURCE_VALUE        212
 #define _APS_NEXT_COMMAND_VALUE         32783
 #define _APS_NEXT_CONTROL_VALUE         1003
 #define _APS_NEXT_SYMED_VALUE           101

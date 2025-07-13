@@ -133,6 +133,10 @@ IDI_PROPERTY2           ICON                    "res\\properties-info.ico"
 
 IDI_OBJECT              ICON                    "res\\object.ico"
 
+IDI_CHECK               ICON                    "res\\check.ico"
+
+IDI_RADIO               ICON                    "res\\radio.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -202,8 +206,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,1,0,0
- PRODUCTVERSION 0,1,0,0
+ FILEVERSION 0,2,0,0
+ PRODUCTVERSION 0,2,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -220,12 +224,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Scorpio Software"
             VALUE "FileDescription", "WMI Explorer"
-            VALUE "FileVersion", "0.1.0.0"
+            VALUE "FileVersion", "0.2.0.0"
             VALUE "InternalName", "WMIExp"
-            VALUE "LegalCopyright", "©2021-2024 Pavel Yosifovich"
+            VALUE "LegalCopyright", "©2021-2025 Pavel Yosifovich"
             VALUE "OriginalFilename", "WMIExp.exe"
             VALUE "ProductName", "WMI Explorer"
-            VALUE "ProductVersion", "0.1"
+            VALUE "ProductVersion", "0.2.0.0"
         END
     END
     BLOCK "VarFileInfo"
