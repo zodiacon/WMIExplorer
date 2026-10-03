@@ -6,7 +6,6 @@
 
 #include <VirtualListView.h>
 #include "WMIHelper.h"
-#include <OwnerDrawnMenu.h>
 #include <CustomSplitterWindow.h>
 #include <TreeViewHelper.h>
 
@@ -14,7 +13,6 @@ class CMainFrame :
 	public CFrameWindowImpl<CMainFrame>,
 	public CAutoUpdateUI<CMainFrame>,
 	public CVirtualListView<CMainFrame>,
-	public COwnerDrawnMenu<CMainFrame>,
 	public CTreeViewHelper<CMainFrame>,
 	public CMessageFilter, 
 	public CIdleHandler {
@@ -42,9 +40,14 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_SYSTEMCLASSES, OnViewSystemClasses)
 		COMMAND_ID_HANDLER(ID_VIEW_SYSTEMPROPERTIES, OnViewSystemProperties)
 		COMMAND_ID_HANDLER(ID_VIEW_NAMESPACESINLIST, OnViewNamespacesInList)
+		COMMAND_ID_HANDLER(ID_VIEW_DERIVEDINSTANCES, OnViewDerivedInstances)
+		COMMAND_ID_HANDLER(ID_VIEW_REFRESH, OnViewRefresh)
+		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnEditCopy)
+		COMMAND_ID_HANDLER(ID_OPTIONS_SINGLEINSTANCE, OnSingleInstance)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
 		COMMAND_ID_HANDLER(ID_VIEW_TOOLBAR, OnViewToolBar)
 		COMMAND_ID_HANDLER(ID_OPTIONS_ALWAYSONTOP, OnAlwaysOnTop)
+		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnToggleDarkMode)
 		COMMAND_ID_HANDLER(ID_VIEW_STATUS_BAR, OnViewStatusBar)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		MESSAGE_HANDLER(WM_SHOWWINDOW, OnShowWindow)
@@ -54,7 +57,6 @@ public:
 		CHAIN_MSG_MAP(CAutoUpdateUI<CMainFrame>)
 		CHAIN_MSG_MAP(CVirtualListView<CMainFrame>)
 		CHAIN_MSG_MAP(CFrameWindowImpl<CMainFrame>)
-		CHAIN_MSG_MAP(COwnerDrawnMenu<CMainFrame>)
 	END_MSG_MAP()
 
 	// Handler prototypes (uncomment arguments if needed):
@@ -81,18 +83,28 @@ private:
 		wil::com_ptr<IWbemClassObject> Object;
 	};
 
+	// a column of the instance list: a property of the selected class
+	struct InstanceColumn {
+		CString Name;
+		CIMTYPE Type;
+	};
+
 	static PCWSTR NodeTypeToText(NodeType type);
 	static CString CimTypeToString(CIMTYPE type);
-	static CString GetArrayValue(CComVariant& value, CIMTYPE type);
+	static CString GetArrayValue(CComVariant const& value, CIMTYPE type);
+	static CString FormatValue(CComVariant const& value, CIMTYPE type);
+	static CString FormatDateTime(PCWSTR dmtf);
+	static int CompareValues(CComVariant const& v1, CComVariant const& v2, CIMTYPE type);
 
-	static CString VariantToString(CComVariant value);
-
-	void InitCommandBar();
+	void InitMenu(HMENU menu);
 	void InitToolBar(CToolBarCtrl& tb, int size = 24);
 	void InitTree();
 	void BuildTree(IWbemServices* pWmi, HTREEITEM hParent);
-	bool IsChildNamespaceOrClass(IWbemServices* pWmi) const;
 	void UpdateList();
+	void CancelInstanceEnum();
+	void BuildInstanceColumns();
+	void ClearInstanceColumns();
+	void SortInstances(const SortInfo* si);
 	CString GetObjectDetails(WmiItem const& item) const;
 	CString GetObjectValue(WmiItem const& item) const;
 	void TreeItemSelected(HTREEITEM hItem);
@@ -115,9 +127,14 @@ private:
 	LRESULT OnViewSystemClasses(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewSystemProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewNamespacesInList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnViewDerivedInstances(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnViewRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnEditCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSingleInstance(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnShowWindow(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnRunAsAdmin(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnToggleDarkMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	CCustomSplitterWindow m_Splitter;
 	CCustomHorSplitterWindow m_DetailSplitter;
@@ -128,13 +145,16 @@ private:
 	CMultiPaneStatusBarCtrl m_StatusBar;
 	std::vector<WmiItem> m_Items;
 	std::vector<WmiItem> m_Objects;
+	std::vector<InstanceColumn> m_InstanceColumns;
 	std::vector<WMIProperty> m_ObjPropValues;
 	HANDLE m_hSingleInstMutex;
 	HTREEITEM m_hRoot;
 	CString m_NamespacePath;
 	CComPtr<IWbemServices> m_spWmi;
 	CComPtr<IWbemServices> m_spCurrentNamespace;
-	CComPtr<IWbemClassObject> m_spCurrentClass, m_spCurrentEnumClass;
+	CComPtr<IWbemClassObject> m_spCurrentClass;
+	// the instance enumeration in progress (if any), and the namespace it runs in (needed to cancel it)
+	CComPtr<IWbemObjectSink> m_spEnumSink;
+	CComPtr<IWbemServices> m_spEnumNamespace;
 	const CString m_RootName{ L"ROOT" };
-	bool m_EnumInstancesInProgress{ false };
 };

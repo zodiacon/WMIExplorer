@@ -4,7 +4,8 @@
 #include "pch.h"
 #include "resource.h"
 #include "MainFrm.h"
-#include <ThemeHelper.h>
+#include <WTLHelper.h>
+#include "AppSettings.h"
 
 CAppModule _Module;
 
@@ -48,9 +49,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lps
 
 	AtlInitCommonControls(ICC_COOL_CLASSES | ICC_BAR_CLASSES | ICC_LISTVIEW_CLASSES | ICC_TREEVIEW_CLASSES);
 
-	ThemeHelper::Init();
 	hr = _Module.Init(nullptr, hInstance);
 	ATLASSERT(SUCCEEDED(hr));
+
+	AppSettings::Get().Load(AppSettings::RegistryKey);
+	// dark or not as the user last chose, and as the system is until then
+	int dark = AppSettings::Get().DarkMode();
+	if (dark < 0)
+		WTLHelper::InitDarkMode();
+	else
+		WTLHelper::InitDarkMode(dark ? DarkModeKind::Dark : DarkModeKind::Classic);
 
 	int nRet = Run(lpstrCmdLine, nCmdShow);
 

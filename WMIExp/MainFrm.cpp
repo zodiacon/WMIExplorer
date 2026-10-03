@@ -9,7 +9,10 @@
 #include "SecurityHelper.h"
 #include "AppSettings.h"
 #include "IconHelper.h"
+#include <WTLHelper.h>
 #include <SortHelper.h>
+#include <ListViewhelper.h>
+#include <ClipboardHelper.h>
 
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg) {
 	return CFrameWindowImpl<CMainFrame>::PreTranslateMessage(pMsg);
@@ -21,6 +24,19 @@ BOOL CMainFrame::OnIdle() {
 }
 
 CString CMainFrame::GetColumnText(HWND h, int row, int col) const {
+	if (h == m_InstanceList) {
+		auto index = GetColumnManager(h)->GetColumnTag<int>(col);
+		if (row >= (int)m_Objects.size() || index >= (int)m_InstanceColumns.size())
+			return L"";
+
+		// values are read as they are shown: an instance is a local copy, so this is cheap
+		auto& column = m_InstanceColumns[index];
+		CComVariant value;
+		if (FAILED(m_Objects[row].Object->Get(column.Name, 0, &value, nullptr, nullptr)))
+			return L"";
+		return FormatValue(value, column.Type);
+	}
+
 	auto column = GetColumnManager(h)->GetColumnTag<ColumnType>(col);
 	if (h == m_List) {
 		auto& item = m_Items[row];
@@ -36,13 +52,6 @@ CString CMainFrame::GetColumnText(HWND h, int row, int col) const {
 
 			case ColumnType::Value: return GetObjectValue(item);
 			case ColumnType::Details: return GetObjectDetails(item);
-		}
-	}
-	else {
-		ATLASSERT(h == m_InstanceList);
-		auto& item = m_Objects[row];
-		switch (column) {
-			case ColumnType::Name: return item.Name.c_str();
 		}
 	}
 	return L"";
@@ -71,16 +80,111 @@ void CMainFrame::OnStateChanged(HWND h, int from, int to, UINT oldState, UINT ne
 		return;
 
 	int index = m_InstanceList.GetSelectedIndex();
-	if (index >= 0) {
+	if (index >= 0 && index < (int)m_Objects.size())
 		m_ObjPropValues = WMIHelper::EnumProperties(m_Objects[index].Object.get());
-		m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+	else
+		m_ObjPropValues.clear();
+	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+}
+
+void CMainFrame::ClearInstanceColumns() {
+	ClearSort(m_InstanceList);
+	GetColumnManager(m_InstanceList)->Clear();
+	m_InstanceColumns.clear();
+}
+
+void CMainFrame::BuildInstanceColumns() {
+	ClearInstanceColumns();
+	if (m_spCurrentClass == nullptr)
+		return;
+
+	auto add = [&](CString const& name, CIMTYPE type, PCWSTR header = nullptr) {
+		if (std::ranges::any_of(m_InstanceColumns, [&](auto const& c) { return c.Name.CompareNoCase(name) == 0; }))
+			return;
+
+		int width = 120;
+		int format = LVCFMT_LEFT;
+		if (type & CIM_FLAG_ARRAY)
+			width = 180;
+		else {
+			switch (type) {
+				case CIM_STRING: case CIM_REFERENCE: width = 180; break;
+				case CIM_DATETIME: width = 140; break;
+				case CIM_BOOLEAN: width = 70; break;
+				case CIM_SINT8: case CIM_UINT8: case CIM_SINT16: case CIM_UINT16: case CIM_SINT32: case CIM_UINT32:
+				case CIM_SINT64: case CIM_UINT64: case CIM_REAL32: case CIM_REAL64:
+					width = 90;
+					format = LVCFMT_RIGHT;
+					break;
+			}
+		}
+		if (header == nullptr)
+			header = name;
+		width = std::max(width, (int)wcslen(header) * 7 + 24);
+		GetColumnManager(m_InstanceList)->AddColumn(header, format, width, (int)m_InstanceColumns.size());
+		m_InstanceColumns.push_back({ name, type });
+	};
+
+	// key properties first, as they identify the instance
+	for (auto& prop : WMIHelper::EnumProperties(m_spCurrentClass, WBEM_FLAG_KEYS_ONLY))
+		add(CString(prop.Name), prop.Type);
+
+	// the class of each instance, if not all are of the selected class
+	if (!m_Objects.empty()) {
+		auto className = WMIHelper::GetStringProperty(m_spCurrentClass, L"__CLASS");
+		if (std::ranges::any_of(m_Objects, [&](auto const& obj) { return WMIHelper::GetStringProperty(obj.Object.get(), L"__CLASS").CompareNoCase(className) != 0; }))
+			add(L"__CLASS", CIM_STRING, L"Class");
+	}
+
+	for (auto& prop : WMIHelper::EnumProperties(m_spCurrentClass, WBEM_FLAG_NONSYSTEM_ONLY))
+		add(CString(prop.Name), prop.Type);
+
+	if (AppSettings::Get().ViewSystemProperties() || m_InstanceColumns.empty()) {
+		for (auto& prop : WMIHelper::EnumProperties(m_spCurrentClass, WBEM_FLAG_SYSTEM_ONLY))
+			add(CString(prop.Name), prop.Type);
+	}
+}
+
+void CMainFrame::SortInstances(const SortInfo* si) {
+	auto index = GetColumnManager(m_InstanceList)->GetColumnTag<int>(si->SortColumn);
+	if (index >= (int)m_InstanceColumns.size())
+		return;
+
+	auto& column = m_InstanceColumns[index];
+	auto count = m_Objects.size();
+	std::vector<CComVariant> values(count);
+	for (size_t i = 0; i < count; i++)
+		m_Objects[i].Object->Get(column.Name, 0, &values[i], nullptr, nullptr);
+
+	std::vector<size_t> order(count);
+	for (size_t i = 0; i < count; i++)
+		order[i] = i;
+	std::ranges::stable_sort(order, [&](size_t i1, size_t i2) {
+		auto result = CompareValues(values[i1], values[i2], column.Type);
+		return si->SortAscending ? result < 0 : result > 0;
+		});
+
+	// keep the selected instance selected (the list view keeps the index, not the instance)
+	int selected = m_InstanceList.GetSelectedIndex();
+	int newSelected = -1;
+	std::vector<WmiItem> sorted;
+	sorted.reserve(count);
+	for (size_t i = 0; i < count; i++) {
+		if ((int)order[i] == selected)
+			newSelected = (int)i;
+		sorted.push_back(std::move(m_Objects[order[i]]));
+	}
+	m_Objects = std::move(sorted);
+
+	if (newSelected >= 0 && newSelected != selected) {
+		m_InstanceList.SetItemState(newSelected, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+		m_InstanceList.EnsureVisible(newSelected, FALSE);
 	}
 }
 
 LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	auto& settings = AppSettings::Get();
 
-	settings.Load(L"Software\\ScorpioSoftware\\WmiExp");
 	m_hSingleInstMutex = ::CreateMutex(nullptr, FALSE, L"WmiExpSingleInstanceMutex");
 	if (settings.SingleInstance() && m_hSingleInstMutex) {
 		if (::GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -107,11 +211,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 		SetWindowText(text);
 	}
 
-	InitCommandBar();
-	SetCheckIcon(IDI_CHECK, IDI_RADIO);
-
+	InitMenu(menu);
 	UIAddMenu(menu);
-	AddMenu(menu);
 
 	CToolBarCtrl tb;
 	tb.Create(m_hWnd, nullptr, nullptr, ATL_SIMPLE_TOOLBAR_PANE_STYLE, 0, ATL_IDW_TOOLBAR);
@@ -163,11 +264,10 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	cm->AddColumn(L"Property Value", LVCFMT_LEFT, 400, ColumnType::Details);
 
 	m_InstanceList.Create(m_DetailSplitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN
-		| LVS_OWNERDATA | LVS_REPORT | LVS_NOSORTHEADER | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS | LVS_SINGLESEL, 0);
-	m_InstanceList.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
+		| LVS_OWNERDATA | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS | LVS_SINGLESEL, 0);
+	m_InstanceList.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP);
 	m_InstanceList.SetImageList(images, LVSIL_SMALL);
-	cm = GetColumnManager(m_InstanceList);
-	cm->AddColumn(L"Instance", LVCFMT_LEFT, 800, ColumnType::Name);
+	// columns are the properties of the selected class (see BuildInstanceColumns)
 
 	m_Splitter.SetSplitterPanes(m_Tree, m_DetailSplitter);
 	m_DetailSplitter.SetSplitterPanes(m_List, m_InstanceList);
@@ -187,6 +287,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	UISetCheck(ID_VIEW_SYSTEMPROPERTIES, settings.ViewSystemProperties());
 	UISetCheck(ID_VIEW_SYSTEMCLASSES, settings.ViewSystemClasses());
 	UISetCheck(ID_VIEW_NAMESPACESINLIST, settings.ShowNamespacesInList());
+	UISetCheck(ID_VIEW_DERIVEDINSTANCES, settings.DerivedInstances());
+	UISetCheck(ID_OPTIONS_DARKMODE, WTLHelper::IsDarkMode());
 
 	if (settings.AlwaysOnTop())
 		SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
@@ -200,6 +302,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 }
 
 LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	CancelInstanceEnum();
 	AppSettings::Get().Save();
 
 	// unregister message filtering and idle updates
@@ -221,10 +324,13 @@ LRESULT CMainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL&) {
 }
 
 LRESULT CMainFrame::OnAddInstances(UINT, WPARAM, LPARAM lp, BOOL& bHandled) {
-	if (m_spCurrentEnumClass == m_spCurrentClass) {
-		m_EnumInstancesInProgress = false;
-		auto cb = reinterpret_cast<IObjectsCallback*>(lp);
-		ATLASSERT(cb);
+	auto cb = reinterpret_cast<IObjectsCallback*>(lp);
+	ATLASSERT(cb);
+
+	// results of an enumeration that was since cancelled or replaced are dropped
+	if (m_spEnumSink && cb->GetSink() == m_spEnumSink) {
+		m_spEnumSink.Release();
+		m_spEnumNamespace.Release();
 
 		auto count = cb->GetObjectCount();
 		m_Objects.clear();
@@ -233,18 +339,27 @@ LRESULT CMainFrame::OnAddInstances(UINT, WPARAM, LPARAM lp, BOOL& bHandled) {
 			WmiItem item;
 			item.Type = NodeType::Instance;
 			item.Object = cb->GetItem(i);
-			CComBSTR text;
-			item.Object->GetObjectText(0, &text);
-			item.Name = text;
 			m_Objects.push_back(std::move(item));
 		}
-		cb->Release();
 
+		BuildInstanceColumns();
 		m_InstanceList.SetItemCount((int)m_Objects.size());
-		m_StatusBar.SetText(2, std::format(L"{} Objects", m_Objects.size()).c_str());
+		if (auto hr = cb->GetStatus(); FAILED(hr))
+			m_StatusBar.SetText(2, std::format(L"{} Objects (Error: {})", m_Objects.size(), (PCWSTR)WMIHelper::GetErrorText(hr)).c_str());
+		else
+			m_StatusBar.SetText(2, std::format(L"{} Objects", m_Objects.size()).c_str());
 	}
+	cb->Release();
 
 	return 0;
+}
+
+void CMainFrame::CancelInstanceEnum() {
+	if (m_spEnumSink) {
+		m_spEnumNamespace->CancelAsyncCall(m_spEnumSink);
+		m_spEnumSink.Release();
+		m_spEnumNamespace.Release();
+	}
 }
 
 LRESULT CMainFrame::OnFileExit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -280,20 +395,31 @@ LRESULT CMainFrame::OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 LRESULT CMainFrame::OnTreeItemExpanding(int, LPNMHDR hdr, BOOL&) {
 	auto tv = reinterpret_cast<NMTREEVIEW*>(hdr);
 	auto hItem = tv->itemNew.hItem;
-	CString text;
-	if (m_Tree.GetItemText(m_Tree.GetChildItem(hItem), text) && text != L"\\\\")
+	auto hChild = m_Tree.GetChildItem(hItem);
+	if (hChild == nullptr || GetTreeNodeType(hChild) != NodeType::HasChildren)
 		return 0;
 
 	auto path = GetFullItemPath(m_Tree, hItem);
 	path = path.Mid(path.Find(L'\\') + 1);
 	CComPtr<IWbemServices> spNamespace;
 	CWaitCursor wait;
+	m_Tree.DeleteItem(hChild);
 	auto hr = m_spWmi->OpenNamespace(CComBSTR(path), 0, nullptr, &spNamespace, nullptr);
 	if (SUCCEEDED(hr)) {
 		m_NamespacePath = m_RootName + L"\\" + path;
-		m_Tree.DeleteItem(m_Tree.GetChildItem(hItem));
 		m_spCurrentNamespace = spNamespace;
 		BuildTree(spNamespace, hItem);
+	}
+	else {
+		m_StatusBar.SetText(2, std::format(L"Error opening {}: {}", (PCWSTR)path, (PCWSTR)WMIHelper::GetErrorText(hr)).c_str());
+	}
+
+	if (m_Tree.GetChildItem(hItem) == nullptr) {
+		// nothing in it (or it cannot be opened): no expand button
+		TVITEM tvi{ TVIF_CHILDREN };
+		tvi.hItem = hItem;
+		tvi.cChildren = 0;
+		m_Tree.SetItem(&tvi);
 	}
 	return 0;
 }
@@ -331,6 +457,10 @@ LRESULT CMainFrame::OnViewSystemProperties(WORD, WORD id, HWND, BOOL&) {
 	AppSettings::Get().ViewSystemProperties(view = !AppSettings::Get().ViewSystemProperties());
 	UISetCheck(id, view);
 	UpdateList();
+	if (!m_Objects.empty()) {
+		BuildInstanceColumns();
+		m_InstanceList.Invalidate();
+	}
 	return 0;
 }
 
@@ -339,6 +469,42 @@ LRESULT CMainFrame::OnViewNamespacesInList(WORD, WORD id, HWND, BOOL&) {
 	AppSettings::Get().ShowNamespacesInList(view = !AppSettings::Get().ShowNamespacesInList());
 	UISetCheck(id, view);
 	UpdateList();
+	return 0;
+}
+
+LRESULT CMainFrame::OnViewDerivedInstances(WORD, WORD id, HWND, BOOL&) {
+	bool view;
+	AppSettings::Get().DerivedInstances(view = !AppSettings::Get().DerivedInstances());
+	UISetCheck(id, view);
+	if (m_spCurrentClass)
+		TreeItemSelected(nullptr);
+	return 0;
+}
+
+LRESULT CMainFrame::OnViewRefresh(WORD, WORD, HWND, BOOL&) {
+	TreeItemSelected(nullptr);
+	return 0;
+}
+
+LRESULT CMainFrame::OnEditCopy(WORD, WORD, HWND, BOOL&) {
+	auto hFocus = ::GetFocus();
+	CString text;
+	if (hFocus == m_List || hFocus == m_InstanceList) {
+		text = ListViewHelper::GetSelectedRowsAsString(CListViewCtrl(hFocus));
+	}
+	else if (hFocus == m_Tree) {
+		if (auto hItem = m_Tree.GetSelectedItem())
+			m_Tree.GetItemText(hItem, text);
+	}
+	if (!text.IsEmpty())
+		ClipboardHelper::CopyText(m_hWnd, text);
+	return 0;
+}
+
+LRESULT CMainFrame::OnSingleInstance(WORD, WORD id, HWND, BOOL&) {
+	bool single;
+	AppSettings::Get().SingleInstance(single = !AppSettings::Get().SingleInstance());
+	UISetCheck(id, single);
 	return 0;
 }
 
@@ -379,70 +545,119 @@ CString CMainFrame::CimTypeToString(CIMTYPE type) {
 	return text;
 }
 
-CString CMainFrame::GetArrayValue(CComVariant& value, CIMTYPE type) {
-	CString text;
-	switch (type & 0xff) {
-		case CIM_STRING:
-		{
-			// string array
-			CComSafeArray<BSTR> arr(value.parray);
-			auto count = arr.GetCount();
-			for (ULONG i = 0; i < count; i++)
-				text += CString(arr.GetAt(i).m_str) + L", ";
-			if (!text.IsEmpty())
-				text = text.Left(text.GetLength() - 2);
-			break;
-		}
+CString CMainFrame::GetArrayValue(CComVariant const& value, CIMTYPE type) {
+	if ((value.vt & VT_ARRAY) == 0 || value.parray == nullptr)
+		return L"";
 
-		case CIM_SINT8:
-		case CIM_UINT8:
-		{
-			BYTE* data;
-			CComSafeArray<BYTE> arr(value.parray);
-			auto count = std::min(arr.GetCount(), (ULONG)64);
-			if (SUCCEEDED(::SafeArrayAccessData(value.parray, reinterpret_cast<void**>(&data)))) {
-				for (ULONG i = 0; i < count; i++) {
-					CString str;
-					str.Format(L"%02X ", data[i]);
-					text += str;
-				}
-				::SafeArrayUnaccessData(value.parray);
-			}
-			break;
+	auto sa = value.parray;
+	LONG lower = 0, upper = -1;
+	::SafeArrayGetLBound(sa, 1, &lower);
+	::SafeArrayGetUBound(sa, 1, &upper);
+
+	CString text;
+	if ((type & ~CIM_FLAG_ARRAY) == CIM_UINT8 || (type & ~CIM_FLAG_ARRAY) == CIM_SINT8) {
+		// bytes are shown in hex (at most 64)
+		BYTE* data;
+		auto count = std::min(upper - lower + 1, 64L);
+		if (SUCCEEDED(::SafeArrayAccessData(sa, reinterpret_cast<void**>(&data)))) {
+			for (LONG i = 0; i < count; i++)
+				text += std::format(L"{:02X} ", data[i]).c_str();
+			::SafeArrayUnaccessData(sa);
 		}
+		return text.TrimRight();
 	}
+
+	VARTYPE vt;
+	if (FAILED(::SafeArrayGetVartype(sa, &vt)))
+		return L"";
+
+	const LONG maxCount = 100;
+	for (LONG i = lower; i <= upper && i < lower + maxCount; i++) {
+		// the element is copied into the variant's data (the union is the same for all types)
+		CComVariant element;
+		if (vt == VT_VARIANT) {
+			if (FAILED(::SafeArrayGetElement(sa, &i, &element)))
+				continue;
+		}
+		else {
+			if (FAILED(::SafeArrayGetElement(sa, &i, &element.llVal)))
+				continue;
+			element.vt = vt;
+		}
+		if (i > lower)
+			text += L", ";
+		text += FormatValue(element, type & ~CIM_FLAG_ARRAY);
+	}
+	if (upper - lower + 1 > maxCount)
+		text += L", ...";
 	return text;
 }
 
-CString CMainFrame::VariantToString(CComVariant value) {
-	if (value.vt == VT_NULL)
+CString CMainFrame::FormatDateTime(PCWSTR dmtf) {
+	// date and time: yyyymmddHHMMSS.mmmmmmsUUU, interval: ddddddddHHMMSS.mmmmmm:000
+	std::wstring_view s(dmtf);
+	if (s.size() < 25 || !std::all_of(s.begin(), s.begin() + 14, [](wchar_t ch) { return ch >= L'0' && ch <= L'9'; }))
+		return dmtf;		// (fields can be wildcards)
+
+	if (s[21] == L':')
+		return std::format(L"{} days, {}:{}:{}", _wtoi(std::wstring(s.substr(0, 8)).c_str()),
+			s.substr(8, 2), s.substr(10, 2), s.substr(12, 2)).c_str();
+	return std::format(L"{}-{}-{} {}:{}:{}", s.substr(0, 4), s.substr(4, 2), s.substr(6, 2),
+		s.substr(8, 2), s.substr(10, 2), s.substr(12, 2)).c_str();
+}
+
+CString CMainFrame::FormatValue(CComVariant const& value, CIMTYPE type) {
+	if (value.vt == VT_NULL || value.vt == VT_EMPTY)
 		return L"";
 
+	if (type & CIM_FLAG_ARRAY)
+		return GetArrayValue(value, type);
 	if (value.vt == VT_BOOL)
 		return value.boolVal ? L"True" : L"False";
-	if (SUCCEEDED(value.ChangeType(VT_BSTR)))
-		return CString(value.bstrVal);
+	if (type == CIM_DATETIME && value.vt == VT_BSTR)
+		return FormatDateTime(value.bstrVal);
+	if (type == CIM_OBJECT)
+		return L"(Object)";
+
+	CComVariant text;
+	if (SUCCEEDED(text.ChangeType(VT_BSTR, &value)))
+		return CString(text.bstrVal);
 	return L"";
 }
 
-void CMainFrame::InitCommandBar() {
-	struct {
-		UINT id, icon;
-		HICON hIcon = nullptr;
-	} cmds[] = {
+int CMainFrame::CompareValues(CComVariant const& v1, CComVariant const& v2, CIMTYPE type) {
+	bool null1 = v1.vt == VT_NULL || v1.vt == VT_EMPTY;
+	bool null2 = v2.vt == VT_NULL || v2.vt == VT_EMPTY;
+	if (null1 || null2)
+		return null1 == null2 ? 0 : (null1 ? -1 : 1);
+
+	if ((type & CIM_FLAG_ARRAY) == 0 && v1.vt == v2.vt) {
+		// 64-bit integers come as strings
+		if (type == CIM_UINT64 && v1.vt == VT_BSTR) {
+			auto n1 = _wcstoui64(v1.bstrVal, nullptr, 10), n2 = _wcstoui64(v2.bstrVal, nullptr, 10);
+			return (n1 > n2) - (n1 < n2);
+		}
+		if (type == CIM_SINT64 && v1.vt == VT_BSTR) {
+			auto n1 = _wcstoi64(v1.bstrVal, nullptr, 10), n2 = _wcstoi64(v2.bstrVal, nullptr, 10);
+			return (n1 > n2) - (n1 < n2);
+		}
+		switch (::VarCmp(const_cast<VARIANT*>(static_cast<const VARIANT*>(&v1)), const_cast<VARIANT*>(static_cast<const VARIANT*>(&v2)),
+			LOCALE_USER_DEFAULT, NORM_IGNORECASE)) {
+			case VARCMP_LT: return -1;
+			case VARCMP_EQ: return 0;
+			case VARCMP_GT: return 1;
+		}
+	}
+	return FormatValue(v1, type).CompareNoCase(FormatValue(v2, type));
+}
+
+void CMainFrame::InitMenu(HMENU menu) {
+	MenuItemData commands[] = {
 		{ ID_FILE_RUNASADMINISTRATOR, 0, IconHelper::GetShieldIcon() },
 		{ ID_EDIT_COPY, IDI_COPY },
 		{ ID_VIEW_REFRESH, IDI_REFRESH },
-		//		{ ID_EDIT_FIND, IDI_FIND },
 	};
-	for (auto& cmd : cmds) {
-		HICON hIcon = cmd.hIcon;
-		if (!hIcon) {
-			hIcon = AtlLoadIconImage(cmd.icon, 0, 16, 16);
-			ATLASSERT(hIcon);
-		}
-		AddCommand(cmd.id, cmd.icon ? hIcon : cmd.hIcon);
-	}
+	WTLHelper::InitMenu(menu, commands, _countof(commands));
 }
 
 void CMainFrame::InitToolBar(CToolBarCtrl& tb, int size) {
@@ -487,33 +702,31 @@ void CMainFrame::InitTree() {
 }
 
 void CMainFrame::BuildTree(IWbemServices* pWmi, HTREEITEM hParent) {
-	auto classes = WMIHelper::EnumClasses(pWmi, true, AppSettings::Get().ViewSystemClasses());
-	for (auto& spObj : classes) {
-		auto name = WMIHelper::GetStringProperty(spObj, L"__CLASS");
-		auto hItem = InsertTreeItem(name, 1, hParent, NodeType::Class);
-	}
+	struct Node {
+		CString Name;
+		bool IsNamespace;
+	};
+	std::vector<Node> nodes;
+	for (auto& spObj : WMIHelper::EnumClasses(pWmi, true, AppSettings::Get().ViewSystemClasses()))
+		nodes.push_back({ WMIHelper::GetStringProperty(spObj, L"__CLASS"), false });
+	for (auto& spObj : WMIHelper::EnumNamespaces(pWmi))
+		nodes.push_back({ WMIHelper::GetStringProperty(spObj, L"NAME"), true });
 
-	auto ns = WMIHelper::EnumNamespaces(pWmi);
-	for (auto& spObj : ns) {
-		auto name = WMIHelper::GetStringProperty(spObj, L"NAME");
-		ATLTRACE(L"Namespace: %s\n", (PCWSTR)name);
-		auto hItem = InsertTreeItem(name, 0, hParent, NodeType::Namespace);
-		CComPtr<IWbemServices> spNamespace;
-		auto hr = pWmi->OpenNamespace(CComBSTR(name), 0, nullptr, &spNamespace, nullptr);
-		if (FAILED(hr))
-			continue;
+	// sorting here and adding at the end is much faster than inserting sorted (TVI_SORT) one by one
+	std::ranges::sort(nodes, [](auto const& n1, auto const& n2) { return ::lstrcmpiW(n1.Name, n2.Name) < 0; });
 
-		if (IsChildNamespaceOrClass(spNamespace)) {
+	m_Tree.SetRedraw(FALSE);
+	for (auto& node : nodes) {
+		auto hItem = InsertTreeItem(node.Name, node.IsNamespace ? 0 : 1, hParent, node.IsNamespace ? NodeType::Namespace : NodeType::Class);
+		//
+		// a namespace gets a placeholder child (so it can be expanded) without opening it;
+		// it is opened when expanded, and loses its expand button then if it turns out empty
+		//
+		if (node.IsNamespace)
 			InsertTreeItem(L"\\\\", 0, hItem, NodeType::HasChildren);
-		}
 	}
-	//m_Tree.SortChildren(hParent);
-}
-
-bool CMainFrame::IsChildNamespaceOrClass(IWbemServices* pWmi) const {
-	CComPtr<IEnumWbemClassObject> spEnum;
-	pWmi->CreateInstanceEnum(CComBSTR(L"__NAMESPACE"), 0, nullptr, &spEnum);
-	return spEnum != nullptr;
+	m_Tree.SetRedraw(TRUE);
+	m_Tree.Invalidate();
 }
 
 void CMainFrame::UpdateList() {
@@ -571,8 +784,12 @@ void CMainFrame::UpdateList() {
 }
 
 void CMainFrame::DoSort(const SortInfo* si) {
-	auto column = GetColumnManager(si->hWnd)->GetColumnTag<ColumnType>(si->SortColumn);
+	if (si->hWnd == m_InstanceList) {
+		SortInstances(si);
+		return;
+	}
 
+	auto column = GetColumnManager(si->hWnd)->GetColumnTag<ColumnType>(si->SortColumn);
 	ATLASSERT(si->hWnd == m_List);
 	auto sort = [&](const auto& i1, const auto& i2) {
 		switch (column) {
@@ -592,12 +809,11 @@ CString CMainFrame::GetObjectDetails(WmiItem const& item) const {
 			if (m_ObjPropValues.empty())
 				return L"";
 
-			auto it = std::find_if(m_ObjPropValues.begin(), m_ObjPropValues.end(), [&](auto p) { return p.Name == item.Name.c_str(); });
+			auto it = std::find_if(m_ObjPropValues.begin(), m_ObjPropValues.end(), [&](auto const& p) { return p.Name == item.Name.c_str(); });
 			if (it == m_ObjPropValues.end())
 				return L"";
 
-			auto value = it->Value;
-			return VariantToString(value);
+			return FormatValue(it->Value, it->Type);
 		}
 
 		case NodeType::Method:
@@ -619,23 +835,19 @@ CString CMainFrame::GetObjectDetails(WmiItem const& item) const {
 CString CMainFrame::GetObjectValue(WmiItem const& item) const {
 	switch (item.Type) {
 		case NodeType::Property:
-			CComVariant value(item.Value);
-			if (value.vt == VT_NULL)
-				return L"";
-
-			if ((item.CimType & CIM_FLAG_ARRAY) && value.parray) {
-				return GetArrayValue(value, item.CimType);
-			}
-			if (value.vt == VT_BOOL)
-				return value.boolVal ? L"True" : L"False";
-			if (SUCCEEDED(value.ChangeType(VT_BSTR)))
-				return CString(value.bstrVal);
-			break;
+			return FormatValue(item.Value, item.CimType);
 	}
 	return L"";
 }
 
 void CMainFrame::TreeItemSelected(HTREEITEM hItem) {
+	CancelInstanceEnum();
+	m_StatusBar.SetText(2, L"");
+	m_InstanceList.SetItemCount(0);
+	m_Objects.clear();
+	m_ObjPropValues.clear();
+	ClearInstanceColumns();
+
 	if(hItem == nullptr)
 		hItem = m_Tree.GetSelectedItem();
 	if (hItem == nullptr) {
@@ -672,11 +884,17 @@ void CMainFrame::TreeItemSelected(HTREEITEM hItem) {
 			m_spCurrentClass = nullptr;
 			m_spCurrentNamespace->GetObject(CComBSTR(name), 0, nullptr, &m_spCurrentClass, nullptr);
 			if (m_spCurrentClass) {
-				m_spCurrentEnumClass = m_spCurrentClass;
 				m_InstanceList.SetItemCount(0);
-				m_EnumInstancesInProgress = true;
-				m_StatusBar.SetText(2, L"Enumerating Objects...");
-				WMIHelper::EnumInstancesAsync(m_hWnd, WM_INSTANCES, name, m_spCurrentNamespace, false);
+				m_Objects.clear();
+				auto hr = WMIHelper::EnumInstancesAsync(m_hWnd, WM_INSTANCES, name, m_spCurrentNamespace,
+					AppSettings::Get().DerivedInstances(), &m_spEnumSink);
+				if (SUCCEEDED(hr)) {
+					m_spEnumNamespace = m_spCurrentNamespace;
+					m_StatusBar.SetText(2, L"Enumerating Objects...");
+				}
+				else {
+					m_StatusBar.SetText(2, L"Error: " + WMIHelper::GetErrorText(hr));
+				}
 			}
 			else {
 				m_List.SetItemCount(0);
@@ -703,7 +921,7 @@ void CMainFrame::RefreshList() {
 }
 
 HTREEITEM CMainFrame::InsertTreeItem(PCWSTR text, int image, HTREEITEM hParent, NodeType type) {
-	auto hItem = m_Tree.InsertItem(text, image, image, hParent, TVI_SORT);
+	auto hItem = m_Tree.InsertItem(text, image, image, hParent, TVI_LAST);
 	ATLASSERT(hItem);
 	m_Tree.SetItemData(hItem, static_cast<ULONG_PTR>(type));
 	return hItem;
@@ -742,5 +960,14 @@ LRESULT CMainFrame::OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 	settings.AlwaysOnTop(!settings.AlwaysOnTop());
 	SetAlwaysOnTop(settings.AlwaysOnTop());
 
+	return 0;
+}
+
+LRESULT CMainFrame::OnToggleDarkMode(WORD, WORD, HWND, BOOL&) {
+	WTLHelper::SwitchToMode(WTLHelper::IsDarkMode() ? DarkModeKind::Classic : DarkModeKind::Dark, m_hWnd);
+	AppSettings::Get().DarkMode(WTLHelper::IsDarkMode() ? 1 : 0);
+	InitMenu(GetMenu());
+	DrawMenuBar();
+	UISetCheck(ID_OPTIONS_DARKMODE, WTLHelper::IsDarkMode());
 	return 0;
 }
