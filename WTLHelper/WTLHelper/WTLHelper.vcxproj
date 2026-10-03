@@ -205,6 +205,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\WTL</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -224,6 +225,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\WTL</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -245,6 +247,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\WTL</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -266,6 +269,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>..\WTL</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -283,6 +287,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\WTL</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -303,6 +308,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <ExceptionHandling>Sync</ExceptionHandling>
+      <AdditionalIncludeDirectories>..\WTL</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -324,6 +330,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\WTL</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -345,6 +352,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\WTL</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -366,6 +374,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\WTL</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -376,45 +385,83 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\WTL\atlapp.h" />
+    <ClInclude Include="..\WTL\atlcrack.h" />
+    <ClInclude Include="..\WTL\atlctrls.h" />
+    <ClInclude Include="..\WTL\atlctrlw.h" />
+    <ClInclude Include="..\WTL\atlctrlx.h" />
+    <ClInclude Include="..\WTL\atlddx.h" />
+    <ClInclude Include="..\WTL\atldlgs.h" />
+    <ClInclude Include="..\WTL\atldwm.h" />
+    <ClInclude Include="..\WTL\atlfind.h" />
+    <ClInclude Include="..\WTL\atlframe.h" />
+    <ClInclude Include="..\WTL\atlgdi.h" />
+    <ClInclude Include="..\WTL\atlmisc.h" />
+    <ClInclude Include="..\WTL\atlprint.h" />
+    <ClInclude Include="..\WTL\atlres.h" />
+    <ClInclude Include="..\WTL\atlribbon.h" />
+    <ClInclude Include="..\WTL\atlscrl.h" />
+    <ClInclude Include="..\WTL\atlsplit.h" />
+    <ClInclude Include="..\WTL\atltheme.h" />
+    <ClInclude Include="..\WTL\atluser.h" />
+    <ClInclude Include="..\WTL\atlwinx.h" />
     <ClInclude Include="ClipboardHelper.h" />
     <ClInclude Include="ColorHelper.h" />
     <ClInclude Include="ColumnManager.h" />
     <ClInclude Include="CompoundFile.h" />
     <ClInclude Include="CompoundFileReaderWriter.h" />
     <ClInclude Include="CustomButton.h" />
+    <ClInclude Include="CustomCheckAclUI.h" />
     <ClInclude Include="CustomComboBox.h" />
+    <ClInclude Include="CustomDateTimePicker.h" />
     <ClInclude Include="CustomDialog.h" />
     <ClInclude Include="CustomEdit.h" />
     <ClInclude Include="CustomHeader.h" />
+    <ClInclude Include="CustomHeader2.h" />
     <ClInclude Include="CustomListView.h" />
+    <ClInclude Include="CustomMonthCalendar.h" />
     <ClInclude Include="CustomRebar.h" />
+    <ClInclude Include="CustomSplitterWindow.h" />
     <ClInclude Include="CustomStatusBar.h" />
     <ClInclude Include="CustomTabControl.h" />
     <ClInclude Include="CustomTabView.h" />
     <ClInclude Include="CustomToolBar.h" />
     <ClInclude Include="CustomTreeView.h" />
-    <ClInclude Include="DarkModeHelper.h" />
+    <ClInclude Include="DarkMode\DarkModeSubclass.h" />
+    <ClInclude Include="DarkMode\DmlibColor.h" />
+    <ClInclude Include="DarkMode\DmlibDpi.h" />
+    <ClInclude Include="DarkMode\DmlibGlyph.h" />
+    <ClInclude Include="DarkMode\DmlibHook.h" />
+    <ClInclude Include="DarkMode\DmlibIni.h" />
+    <ClInclude Include="DarkMode\DmlibPaintHelper.h" />
+    <ClInclude Include="DarkMode\DmlibSubclass.h" />
+    <ClInclude Include="DarkMode\DmlibSubclassControl.h" />
+    <ClInclude Include="DarkMode\DmlibSubclassWindow.h" />
+    <ClInclude Include="DarkMode\DmlibWinApi.h" />
+    <ClInclude Include="DarkMode\IatHook.h" />
+    <ClInclude Include="DarkMode\ModuleHelper.h" />
+    <ClInclude Include="DarkMode\UAHMenuBar.h" />
+    <ClInclude Include="DarkMode\Version.h" />
     <ClInclude Include="DialogHelper.h" />
-    <ClInclude Include="HexControl.h" />
-    <ClInclude Include="IATHook.h" />
-    <ClInclude Include="IBufferManager.h" />
     <ClInclude Include="IconHelper.h" />
     <ClInclude Include="IListView.h" />
+    <ClInclude Include="IniDocument.h" />
     <ClInclude Include="IniFile.h" />
     <ClInclude Include="ListViewhelper.h" />
+    <ClInclude Include="NativeCustomTabView.h" />
     <ClInclude Include="OwnerDrawnMenu.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="QuickFindEdit.h" />
-    <ClInclude Include="Selection.h" />
-    <ClInclude Include="WTLHelperRes.h" />
+    <ClInclude Include="SecurityHelper.h" />
+    <ClInclude Include="TabViewHelper.h" />
+    <ClInclude Include="TreeListView.h" />
+    <ClInclude Include="WTLHelper.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="SortedFilteredVector.h" />
     <ClInclude Include="StandardColors.h" />
     <ClInclude Include="ToolbarHelper.h" />
-    <ClInclude Include="TreeListViewCtrl.h" />
     <ClInclude Include="TreeViewHelper.h" />
     <ClInclude Include="VirtualListView.h" />
-    <ClInclude Include="WTLx.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ClipboardHelper.cpp" />
@@ -423,10 +470,19 @@
     <ClCompile Include="CompoundFile.cpp" />
     <ClCompile Include="CompoundFileReaderWriter.cpp" />
     <ClCompile Include="CustomTabView.cpp" />
-    <ClCompile Include="DarkModeHelper.cpp" />
-    <ClCompile Include="HexControl.cpp" />
+    <ClCompile Include="DarkMode\DarkModeSubclass.cpp" />
+    <ClCompile Include="DarkMode\DmlibColor.cpp" />
+    <ClCompile Include="DarkMode\DmlibDpi.cpp" />
+    <ClCompile Include="DarkMode\DmlibHook.cpp" />
+    <ClCompile Include="DarkMode\DmlibIni.cpp" />
+    <ClCompile Include="DarkMode\DmlibPaintHelper.cpp" />
+    <ClCompile Include="DarkMode\DmlibSubclass.cpp" />
+    <ClCompile Include="DarkMode\DmlibSubclassControl.cpp" />
+    <ClCompile Include="DarkMode\DmlibSubclassWindow.cpp" />
+    <ClCompile Include="DarkMode\DmlibWinApi.cpp" />
     <ClCompile Include="IconHelper.cpp" />
     <ClCompile Include="IListView.cpp" />
+    <ClCompile Include="IniDocument.cpp" />
     <ClCompile Include="IniFile.cpp" />
     <ClCompile Include="ListViewhelper.cpp" />
     <ClCompile Include="OwnerDrawnMenu.cpp" />
@@ -441,25 +497,15 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseSigned|ARM64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Selection.cpp" />
+    <ClCompile Include="SecurityHelper.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="SortHelper.cpp" />
     <ClCompile Include="StringHelper.cpp" />
     <ClCompile Include="Theme.cpp" />
     <ClCompile Include="ThemeHelper.cpp" />
     <ClCompile Include="ToolbarHelper.cpp" />
-    <ClCompile Include="TreeListViewCtrl.cpp" />
     <ClCompile Include="VersionResourceHelper.cpp" />
     <ClCompile Include="WTLHelper.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="WTLHelper.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="res\Collapsed.ico" />
-    <Image Include="res\Collapsed2.ico" />
-    <Image Include="res\Expanded.ico" />
-    <Image Include="res\Expanded2.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

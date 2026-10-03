@@ -6,7 +6,7 @@
 // Written by Bjarke Viksoe (bjarke@viksoe.dk)
 // Copyright (c) 2001-2005 Bjarke Viksoe.
 //
-// Partly implemented from a MFC CTreeListView control by Gerolf Kühnel
+// Partly implemented from a MFC CTreeListView control by Gerolf KÃ¼hnel
 // available at www.codeproject.com.
 // Horizontal scrolling supplied by Oleg Reabciuc (olegr@compudava.com).
 // Nail Kaipov fixed the horizontal scrollbar code (roof@crypt.nsk.ru).
@@ -18,10 +18,33 @@
 // not sold for profit without the authors written consent, and 
 // providing that this notice and the authors name is included. 
 //
-// Pavel Yosifovich (2022): code cleanup, modern compiler fixes, safe string functions, bug fixes
+// This file is provided "as is" with no expressed or implied warranty.
+// The author accepts no liability if it causes any damage to you or your
+// computer whatsoever. It's free, so don't hassle me about it.
+//
+// Beware of bugs.
+//
+
+
+#ifndef __cplusplus
+#error ATL requires C++ compilation (use a .cpp suffix)
+#endif
+
+#ifndef __ATLAPP_H__
+#error TreeListView.h requires atlapp.h to be included first
+#endif
+
+#ifndef __ATLCTRLS_H__
+#error TreeListView.h requires atlctrls.h to be included first
+#endif
+
+#if (_WIN32_IE < 0x0400)
+#error TreeListView.h requires _WIN32_IE >= 0x0400
+#endif
+
 
 // The TreeListView item structure
-typedef struct _TLVITEM {
+typedef struct tagTLVITEM {
 	UINT     mask;
 	int      iSubItem;
 	UINT     state;
@@ -57,21 +80,22 @@ typedef struct _TLVITEM {
 #define TLVS_EX_NOFOCUSRECT      0x00000001
 #define TLVS_EX_SELTOHEADER      0x00000002
 
-template<typename T, typename TBase = ATL::CWindow, typename TWinTraits = ATL::CControlWinTraits>
+
+template<class T, class TBase = CWindow, class TWinTraits = CControlWinTraits>
 class ATL_NO_VTABLE CTreeListViewImpl :
-	public CWindowImpl<T, TBase, TWinTraits>,
-	public CCustomDraw<T> {
+	public CWindowImpl< T, TBase, TWinTraits >,
+	public CCustomDraw< T > {
 public:
 	typedef CTreeListViewImpl<T, TBase, TWinTraits> thisClass;
 
-	//DECLARE_WND_SUPERCLASS(nullptr, TBase::GetWndClassName());
+	//DECLARE_WND_SUPERCLASS(nullptr, CTreeViewCtrl, TBase::GetWndClassName())
 
-	CContainedWindowT<CTreeViewCtrl> m_ctrlTree;
-	CContainedWindowT<CHeaderCtrl> m_ctrlHeader;
+	CContainedWindowT< CTreeViewCtrl > m_ctrlTree;
+	CContainedWindowT< CHeaderCtrl > m_ctrlHeader;
 	//
-	typedef CSimpleArray< TLVITEM*> tMapItem;
-	CSimpleMap<HTREEITEM, tMapItem*> m_mapItems;   // Map of extended item info
-	CSimpleArray<RECT> m_rcColumns;                // List of colunm header rects
+	typedef CSimpleArray< TLVITEM* > tMapItem;
+	CSimpleMap< HTREEITEM, tMapItem* > m_mapItems;   // Map of extended item info
+	CSimpleArray< RECT > m_rcColumns;                // List of colunm header rects
 	//
 	CFont m_fontHeader;                              // Header font
 	LONG m_cxHeader;                                 // Total header sizes
@@ -86,10 +110,12 @@ public:
 	DWORD m_dwHeaderStyle;                           // Style for header at creation
 
 	CTreeListViewImpl() :
+		m_ctrlTree(this, 1),
+		m_ctrlHeader(this, 2),
 		m_cxHeader(0),
 		m_nOffset(0),
 		m_dwExStyle(0),
-		m_dwHeaderStyle(WS_CHILD | WS_VISIBLE | HDS_HORZ) {
+		m_dwHeaderStyle(WS_CHILD | WS_VISIBLE | HDS_BUTTONS | HDS_HORZ | HDS_DRAGDROP) {
 	}
 
 	// Operations
@@ -98,11 +124,10 @@ public:
 		auto p = static_cast<T*>(this);
 		ATLASSERT(p->m_hWnd == nullptr);
 		ATLASSERT(::IsWindow(hWnd));
-		BOOL bRet = CWindowImpl<T, TBase, TWinTraits>::SubclassWindow(hWnd);
+		BOOL bRet = CWindowImpl< T, TBase, TWinTraits >::SubclassWindow(hWnd);
 		if (bRet) _Init();
 		return bRet;
 	}
-
 	BOOL SetSubItem(HTREEITEM hItem, const LPTLVITEM pItem) {
 		auto p = static_cast<T*>(this);
 		ATLASSERT(::IsWindow(p->m_hWnd));
@@ -119,8 +144,8 @@ public:
 		if (pItem->mask & TLVIF_TEXT) {
 			if (pItemT->mask & TLVIF_TEXT) ATLTRY(delete[] pItemT->pszText);
 			int len;
-			ATLTRY(pItemT->pszText = new TCHAR[(len = ::lstrlen(pItem->pszText)) + 1]);
-			::StringCchCopy(pItemT->pszText, len + 1, pItem->pszText);
+			ATLTRY(pItemT->pszText = new TCHAR[len = (int)_tcslen(pItem->pszText) + 1]);
+			_tcscpy_s(pItemT->pszText, len, pItem->pszText);
 			pItemT->mask |= TLVIF_TEXT;
 		}
 		if (pItem->mask & TLVIF_IMAGE) {
@@ -159,7 +184,7 @@ public:
 		UINT mask = pItem->mask;
 		if (mask & TLVIF_TEXT) {
 			ATLASSERT(!::IsBadWritePtr(pItem->pszText, pItem->cchTextMax));
-			::StringCchCopy(pItem->pszText, pItem->cchTextMax, pItemT->pszText == nullptr ? _T("") : pItemT->pszText);
+			_tcscpy_s(pItem->pszText, pItem->cchTextMax, pItemT->pszText == nullptr ? _T("") : pItemT->pszText);
 		}
 		if (mask & TLVIF_IMAGE) pItem->iImage = pItemT->iImage;
 		if (mask & TLVIF_FORMAT) pItem->format = pItemT->format;
@@ -171,6 +196,7 @@ public:
 		if (mask & TLVIF_PARAM) pItem->lParam = pItemT->lParam;
 		return TRUE;
 	}
+
 	BOOL SetSubItemText(HTREEITEM hItem, int nSubItem, LPCTSTR pstrString, DWORD format = TLVIFMT_LEFT) {
 		auto p = static_cast<T*>(this);
 		ATLASSERT(::IsWindow(p->m_hWnd));
@@ -190,7 +216,7 @@ public:
 		ATLASSERT(!::IsBadWritePtr(pstrString, cchMax));
 		LPTLVITEM pItem = _GetSubItem(hItem, nSubItem);
 		if (pItem == nullptr) return FALSE;
-		::StringCchCopy(pstrString, cchMax, pItem->pszText);
+		_tcscpy_s(pstrString, cchMax, pItem->pszText);
 		return TRUE;
 	}
 	COLORREF GetSubItemColor(HTREEITEM hItem, int nSubItem, COLORREF* pBackColor) {
@@ -263,11 +289,6 @@ public:
 		auto p = static_cast<T*>(this);
 		ATLASSERT(::IsWindow(p->m_hWnd));
 
-		// This is a Platform SDK define which we need
-#ifndef TVS_NOHSCROLL
-		const UINT TVS_NOHSCROLL = 0x8000;
-#endif
-
 		// Create the tree control
 		// Thanks to Nicola Tufarelli for suggesting using the GetDlgCtrlID() to
 		// preserve the original control ID...
@@ -275,12 +296,13 @@ public:
 		UINT nID = p->GetDlgCtrlID();
 		m_ctrlTree.Create(this, 1, p->m_hWnd, &p->rcDefault, nullptr, dwStyle, 0, nID);
 		ATLASSERT(m_ctrlTree.IsWindow());
+		m_ctrlTree.SetBkColor(::GetSysColor(COLOR_WINDOW));
 		m_ctrlTree.ModifyStyle(0, TVS_NOHSCROLL | TVS_FULLROWSELECT);  // we need these
 
 		// Create the header control
 		m_ctrlHeader.Create(this, 2, p->m_hWnd, &p->rcDefault, nullptr, m_dwHeaderStyle);
 		ATLASSERT(m_ctrlHeader.IsWindow());
-		::SetWindowTheme(m_ctrlHeader, L" ", L" ");
+
 		p->SendMessage(WM_SETTINGCHANGE);
 
 		p->UpdateLayout();
@@ -316,13 +338,11 @@ public:
 			m_cxHeader += rc.right - rc.left;
 		}
 
-		auto p = static_cast<T*>(this);
-
 		// FIX: Nail Kaipov fixed the horizontal scrollbar code
 		// If the width of all headers is bigger than the width of the client-area 
 		// of the TreeView, then the Scrollbar is to be enabled
 		RECT rcClient;
-
+		auto p = static_cast<T*>(this);
 		p->GetClientRect(&rcClient);
 		if (p->GetStyle() & WS_VSCROLL) rcClient.right += ::GetSystemMetrics(SM_CXHTHUMB);
 		LONG cxClient = (rcClient.right - rcClient.left);
@@ -359,13 +379,14 @@ public:
 
 	// Message map and handlers
 
-	BEGIN_MSG_MAP(thisClass)
+	BEGIN_MSG_MAP(CTreeListViewCtrl)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkGnd)
 		CHAIN_MSG_MAP(CCustomDraw< T >)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
 		MESSAGE_HANDLER(WM_HSCROLL, OnHScroll)
+		MESSAGE_HANDLER(::RegisterWindowMessage(L"WTLHelperUpdateTheme"), OnUpdateTheme)
 		MESSAGE_HANDLER(WM_SETTINGCHANGE, OnSettingChange)
 		NOTIFY_CODE_HANDLER(TVN_DELETEITEMA, OnTreeItemDelete)
 		NOTIFY_CODE_HANDLER(TVN_DELETEITEMW, OnTreeItemDelete)
@@ -390,8 +411,13 @@ public:
 		MESSAGE_HANDLER(HDM_DELETEITEM, OnHeaderItemDelete)
 	END_MSG_MAP()
 
+	LRESULT OnUpdateTheme(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+		m_ctrlTree.SetBkColor(::GetSysColor(COLOR_WINDOW));
+		return 0;
+	}
+
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
-		// Do not allow the TreeView control to initialize here! 
+		// Do not allow the TreeView control to initialize here!
 		// We are creating new child controls ourselves in the _Init() method.
 		_Init();
 		return 0;
@@ -408,33 +434,32 @@ public:
 	}
 
 	LRESULT OnSettingChange(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
-		if (!m_fontHeader.IsNull()) m_fontHeader.DeleteObject();
+		if (!m_fontHeader.IsNull()) 
+			m_fontHeader.DeleteObject();
 		NONCLIENTMETRICS ncm = { 0 };
 		ncm.cbSize = sizeof(ncm);
 		::SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
 		m_fontHeader.CreateFontIndirect(&ncm.lfMenuFont);
-		m_ctrlHeader.SetFont(m_fontHeader);
+		if (::IsWindow(m_ctrlHeader)) {
+			m_ctrlHeader.SetFont(m_fontHeader);
+		}
 
 		auto p = static_cast<T*>(this);
 		p->Invalidate();
-
 		return 0;
 	}
 	LRESULT OnSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 		m_ctrlTree.SetFocus();
 		return 0;
 	}
-
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 		T* pT = static_cast<T*>(this);
 		pT->UpdateLayout();
 		return 0;
 	}
-
 	LRESULT OnEraseBkGnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 		return 1; // Children fill entire client area
 	}
-
 	LPARAM OnHScroll(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 		// Thanks to Oleg Reabciuc for providing the horizontal scrolling
 		// support for this control
@@ -444,6 +469,7 @@ public:
 
 		RECT rcClient;
 		m_ctrlTree.GetClientRect(&rcClient);
+
 		auto p = static_cast<T*>(this);
 
 		int cxClient = abs(rcClient.right - rcClient.left);   // One Page
@@ -455,7 +481,7 @@ public:
 		int nScrollMax;                         // Maximum scrolling value
 		p->GetScrollRange(SB_HORZ, &nScrollMin, &nScrollMax);
 
-		// Check which kind of scroll is wanted
+		// Check which kind of scoll is wanted
 		switch (nSBCode) {
 			case SB_LEFT:                          // Scoll to left most position
 				nCurPos = 0;
@@ -482,7 +508,7 @@ public:
 					nCurPos = 0;
 				}
 				else {
-					nCurPos = std::min<int>(StretchWidth(nPos, nWidthLine), nScrollMax);
+					nCurPos = std::min((int)StretchWidth(nPos, nWidthLine), nScrollMax);
 				}
 		}
 
@@ -529,8 +555,9 @@ public:
 		//       actually use it internally.
 		// FIX: On Windows XP the selection fails quickly if you move the mouse; so we
 		//      just select it immediately.
-		RECT rcClient;
 		auto p = static_cast<T*>(this);
+
+		RECT rcClient;
 		p->GetClientRect(&rcClient);
 		int x = GET_X_LPARAM(lParam) - m_nOffset;
 		int y = GET_Y_LPARAM(lParam);
@@ -684,6 +711,7 @@ public:
 	}
 	LRESULT OnHeaderEndDrag(int /*idCtrl*/, LPNMHDR pnmh, BOOL& bHandled) {
 		LPNMHEADER pnmhd = (LPNMHEADER)pnmh;
+		auto p = static_cast<T*>(this);
 
 		// Cannot drag first column, really!
 		// Bug in MS control requires this extra check.
@@ -692,13 +720,11 @@ public:
 		m_ctrlHeader.GetItemRect(0, &rcItem);
 		DWORD dwPos = ::GetMessagePos();
 		POINT pt = { GET_X_LPARAM(dwPos), GET_Y_LPARAM(dwPos) };
-		auto p = static_cast<T*>(this);
 		p->ScreenToClient(&pt);
 		if (pt.x <= rcItem.right) return TRUE; // Cannot re-order first column
 
 		// Need to reposition the header
-		T* pT = static_cast<T*>(this);
-		pT->UpdateLayout();
+		p->UpdateLayout();
 
 		bHandled = FALSE;
 		return 0;
@@ -735,7 +761,8 @@ public:
 		return CDRF_NOTIFYITEMDRAW;   // We need per-item notifications
 	}
 	DWORD OnItemPrePaint(int /*idCtrl*/, LPNMCUSTOMDRAW lpNMCustomDraw) {
-		if (lpNMCustomDraw->hdr.hwndFrom != m_ctrlTree) return CDRF_DODEFAULT;
+		if (lpNMCustomDraw->hdr.hwndFrom != m_ctrlTree) 
+			return CDRF_DODEFAULT;
 
 		// Reset the focus because it will be drawn by us
 		m_iItemState = lpNMCustomDraw->uItemState;
@@ -775,9 +802,10 @@ public:
 		ATLASSERT(::IsWindow(m_ctrlTree));
 		ATLASSERT(::IsWindow(m_ctrlHeader));
 
+		auto p = static_cast<T*>(this);
+
 		// FIX: Horizontal scrollbar fix by Nail Kaipov
 		m_nOffset = 0;
-		auto p = static_cast<T*>(this);
 		if (p->GetStyle() & WS_HSCROLL) m_nOffset = -p->GetScrollPos(SB_HORZ); // read scrollbar position
 
 		// Reposition the header and tree control
@@ -840,7 +868,6 @@ public:
 			dc.FillSolidRect(&rcHigh, lptvcd->clrTextBk);
 		}
 
-		// Always write text with background
 		dc.SetBkMode(OPAQUE);
 
 		// Draw all columns of the item
@@ -861,7 +888,7 @@ public:
 					pItem->iImage,
 					dc,
 					rc.left, rc.top,
-					std::min<int>(cx, rc.right - rc.left), cy,
+					std::min(cx, int(rc.right - rc.left)), cy,
 					CLR_NONE, CLR_NONE,
 					ILD_TRANSPARENT);
 				rc.left += cx;
@@ -872,8 +899,8 @@ public:
 			if (pItem->mask & TLVIF_TEXT) {
 				rc.left += 2;
 
-				COLORREF clrText = lptvcd->clrText;
-				COLORREF clrBack = lptvcd->clrTextBk;
+				COLORREF clrText = lptvcd->clrText == CLR_INVALID ? ::GetSysColor(COLOR_WINDOWTEXT) : lptvcd->clrText;
+				COLORREF clrBack = lptvcd->clrTextBk == CLR_INVALID ? ::GetSysColor(COLOR_WINDOW) : lptvcd->clrTextBk;
 
 				if (pItem->mask & TLVIF_COLOR) {
 					if (bSelected) {
@@ -885,7 +912,7 @@ public:
 							dc.SetTextColor(pItem->clrText);
 						}
 						if (pItem->clrBack != CLR_NONE) {
-							dc.SetBkColor(pItem->clrBack);
+							dc.SetBkColor(clrBack);
 							if (i != 0) {
 								// For first item we already set background color
 								dc.FillSolidRect(&rc, pItem->clrBack);
@@ -901,7 +928,8 @@ public:
 				}
 				else {
 					COLORREF clrBack = m_ctrlTree.GetBkColor();
-					if (clrBack == CLR_NONE) clrBack = ::GetSysColor(COLOR_WINDOW);
+					if (clrBack == CLR_NONE)
+						clrBack = ::GetSysColor(COLOR_WINDOW);
 					dc.SetBkColor(bSelected ? m_clrSelection : clrBack);
 					dc.SetTextColor(clrText);
 				}
@@ -922,18 +950,28 @@ public:
 
 				UINT format = pItem->mask & TLVIF_FORMAT ? pItem->format : 0;
 
-				dc.DrawText(pItem->pszText, -1, &rc,
+				dc.DrawText(pItem->pszText,
+					-1,
+					&rc,
 					DT_VCENTER | DT_SINGLELINE | DT_WORD_ELLIPSIS | format);
 
-				if (pItem->mask & TLVIF_STATE)
-					dc.SelectFont(hOldFont);
+				if (pItem->mask & TLVIF_STATE) dc.SelectFont(hOldFont);
 			}
 		}
 	}
+
 };
 
 
+class CTreeListViewCtrl : public CTreeListViewImpl<CTreeListViewCtrl> {
+public:
+	DECLARE_WND_CLASS(_T("WTL_TreeListView"));
+};
+
+// Alternate name kept for source compatibility with existing consumers.
 class CTreeListView : public CTreeListViewImpl<CTreeListView> {
 public:
 	DECLARE_WND_CLASS(L"WTL_TreeListView")
 };
+
+

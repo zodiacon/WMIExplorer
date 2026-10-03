@@ -96,7 +96,7 @@ void HandleCreateWindow(CWPRETSTRUCT* cs) {
 		auto win = new CCustomToolBarParent;
 		win->Init(cs->hwnd);
 	}
-	else if (name.CompareNoCase(WC_HEADER) == 0) {
+	else if (name.CompareNoCase(WC_HEADER) == 0 || name.CompareNoCase("ATL:" WC_HEADER) == 0) {
 		::SetWindowTheme(cs->hwnd, nullptr, nullptr);
 		auto win = new CCustomHeaderParent;
 		win->SubclassWindow(lpcs->hwndParent);

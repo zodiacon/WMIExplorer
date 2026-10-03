@@ -53,7 +53,7 @@ struct CVirtualListView {
 		int RealSortColumn = -1;
 	};
 
-	bool ClearSort(UINT_PTR id = 0) {
+	bool ClearSort(UINT_PTR id = 0) noexcept {
 		auto si = FindById(id);
 		if (si == nullptr)
 			return false;
@@ -68,7 +68,7 @@ struct CVirtualListView {
 		return true;
 	}
 
-	bool ClearSort(HWND hWnd) {
+	bool ClearSort(HWND hWnd) noexcept {
 		auto si = FindByHwnd(hWnd);
 		if (si == nullptr)
 			return false;
@@ -143,19 +143,19 @@ struct CVirtualListView {
 		return 0;
 	}
 
-	bool OnRightClickHeader(HWND, int index, POINT const& pt) const {
+	bool OnRightClickHeader(HWND, int index, POINT const& pt) const noexcept {
 		return false;
 	}
 
-	bool OnRightClickList(HWND, int row, int col, POINT const& pt) const {
+	bool OnRightClickList(HWND, int row, int col, POINT const& pt) const noexcept {
 		return false;
 	}
 
-	bool OnDoubleClickList(HWND, int row, int col, POINT const& pt) const {
+	bool OnDoubleClickList(HWND, int row, int col, POINT const& pt) const noexcept {
 		return false;
 	}
 
-	void OnListViewClick(HWND, int row, int col, POINT const& pt) const {
+	void OnListViewClick(HWND, int row, int col, POINT const& pt) const noexcept {
 	}
 
 protected:
@@ -230,11 +230,11 @@ protected:
 		return 0;
 	}
 
-	PCWSTR GetExistingColumnText(HWND hWnd, int row, int column) const {
+	PCWSTR GetExistingColumnText(HWND hWnd, int row, int column) const noexcept {
 		return nullptr;
 	}
 
-	void OnStateChanged(HWND, int from, int to, UINT oldState, UINT newState) const {
+	void OnStateChanged(HWND, int from, int to, UINT oldState, UINT newState) const noexcept {
 	}
 
 	LRESULT OnFindItem(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
@@ -274,12 +274,12 @@ protected:
 		p->PostSort(si->hWnd);
 	}
 
-	void IsSorting(bool sorting) {
+	void SetIsSorting(bool sorting) {
 		m_IsSorting = sorting;
 	}
 
-	LRESULT OnColumnClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
-		IsSorting(true);
+	LRESULT OnColumnClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) noexcept {
+		SetIsSorting(true);
 		auto lv = (NMLISTVIEW*)hdr;
 		auto col = GetRealColumn(hdr->hwndFrom, lv->iSubItem);
 
@@ -329,7 +329,7 @@ protected:
 		//}
 
 		Sort(si);
-		IsSorting(false);
+		SetIsSorting(false);
 		list.RedrawItems(list.GetTopIndex(), list.GetTopIndex() + list.GetCountPerPage());
 
 		return 0;
@@ -345,11 +345,11 @@ protected:
 			list.RedrawItems(list.GetTopIndex(), list.GetTopIndex() + list.GetCountPerPage());
 	}
 
-	bool IsSorting() const {
+	bool IsSorting() const noexcept {
 		return m_IsSorting;
 	}
 
-	bool IsSortable(HWND, int) const {
+	bool IsSortable(HWND, int) const noexcept {
 		return true;
 	}
 

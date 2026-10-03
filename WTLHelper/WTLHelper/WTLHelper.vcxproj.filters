@@ -20,9 +20,6 @@
     <ClCompile Include="IconHelper.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
-    <ClCompile Include="HexControl.cpp">
-      <Filter>Controls</Filter>
-    </ClCompile>
     <ClCompile Include="ListViewhelper.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
@@ -35,11 +32,11 @@
     <ClCompile Include="SortHelper.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
-    <ClCompile Include="IniFile.cpp">
+    <ClCompile Include="IniDocument.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
-    <ClCompile Include="TreeListViewCtrl.cpp">
-      <Filter>Controls</Filter>
+    <ClCompile Include="IniFile.cpp">
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="VersionResourceHelper.cpp">
       <Filter>Helpers</Filter>
@@ -53,14 +50,42 @@
     <ClCompile Include="CompoundFile.cpp">
       <Filter>CompoundFiles</Filter>
     </ClCompile>
-    <ClCompile Include="Selection.cpp">
+    <ClCompile Include="DarkMode\DarkModeSubclass.cpp">
+      <Filter>DarkMode</Filter>
+    </ClCompile>
+    <ClCompile Include="DarkMode\DmlibColor.cpp">
+      <Filter>DarkMode</Filter>
+    </ClCompile>
+    <ClCompile Include="DarkMode\DmlibDpi.cpp">
+      <Filter>DarkMode</Filter>
+    </ClCompile>
+    <ClCompile Include="DarkMode\DmlibHook.cpp">
+      <Filter>DarkMode</Filter>
+    </ClCompile>
+    <ClCompile Include="DarkMode\DmlibIni.cpp">
+      <Filter>DarkMode</Filter>
+    </ClCompile>
+    <ClCompile Include="DarkMode\DmlibPaintHelper.cpp">
+      <Filter>DarkMode</Filter>
+    </ClCompile>
+    <ClCompile Include="DarkMode\DmlibSubclass.cpp">
+      <Filter>DarkMode</Filter>
+    </ClCompile>
+    <ClCompile Include="DarkMode\DmlibSubclassControl.cpp">
+      <Filter>DarkMode</Filter>
+    </ClCompile>
+    <ClCompile Include="DarkMode\DmlibSubclassWindow.cpp">
+      <Filter>DarkMode</Filter>
+    </ClCompile>
+    <ClCompile Include="DarkMode\DmlibWinApi.cpp">
+      <Filter>DarkMode</Filter>
+    </ClCompile>
+    <ClCompile Include="SecurityHelper.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
-    <ClCompile Include="DarkModeHelper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ColumnManager.h" />
-    <ClInclude Include="IBufferManager.h" />
     <ClInclude Include="IListView.h" />
     <ClInclude Include="OwnerDrawnMenu.h" />
     <ClInclude Include="pch.h" />
@@ -108,20 +133,17 @@
     <ClInclude Include="IconHelper.h">
       <Filter>Helpers</Filter>
     </ClInclude>
-    <ClInclude Include="HexControl.h">
-      <Filter>Controls</Filter>
-    </ClInclude>
     <ClInclude Include="ListViewhelper.h">
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="ToolbarHelper.h">
       <Filter>Helpers</Filter>
     </ClInclude>
-    <ClInclude Include="IniFile.h">
+    <ClInclude Include="IniDocument.h">
       <Filter>Helpers</Filter>
     </ClInclude>
-    <ClInclude Include="TreeListViewCtrl.h">
-      <Filter>Controls</Filter>
+    <ClInclude Include="IniFile.h">
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="VirtualListView.h">
       <Filter>Controls</Filter>
@@ -144,20 +166,138 @@
     <ClInclude Include="StandardColors.h">
       <Filter>Helpers</Filter>
     </ClInclude>
-    <ClInclude Include="WTLHelperRes.h">
-      <Filter>Resources</Filter>
-    </ClInclude>
     <ClInclude Include="CustomComboBox.h">
       <Filter>Controls</Filter>
     </ClInclude>
-    <ClInclude Include="Selection.h">
-      <Filter>Helpers</Filter>
-    </ClInclude>
-    <ClInclude Include="WTLx.h">
+    <ClInclude Include="CustomSplitterWindow.h">
       <Filter>Controls</Filter>
     </ClInclude>
-    <ClInclude Include="DarkModeHelper.h" />
-    <ClInclude Include="IATHook.h" />
+    <ClInclude Include="TreeListView.h">
+      <Filter>Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\ModuleHelper.h" />
+    <ClInclude Include="WTLHelper.h" />
+    <ClInclude Include="DarkMode\DarkModeSubclass.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\DmlibColor.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\DmlibDpi.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\DmlibGlyph.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\DmlibHook.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\DmlibIni.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\DmlibPaintHelper.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\DmlibSubclass.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\DmlibSubclassControl.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\DmlibSubclassWindow.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\DmlibWinApi.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="NativeCustomTabView.h">
+      <Filter>Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\UAHMenuBar.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\Version.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="DarkMode\IatHook.h">
+      <Filter>DarkMode</Filter>
+    </ClInclude>
+    <ClInclude Include="CustomHeader2.h">
+      <Filter>Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="TabViewHelper.h" />
+    <ClInclude Include="CustomDateTimePicker.h">
+      <Filter>Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="CustomCheckAclUI.h">
+      <Filter>Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="CustomMonthCalendar.h">
+      <Filter>Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlapp.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlcrack.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlctrls.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlctrlw.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlctrlx.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlddx.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atldlgs.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atldwm.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlfind.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlframe.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlgdi.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlmisc.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlprint.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlres.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlribbon.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlscrl.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlsplit.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atltheme.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atluser.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WTL\atlwinx.h">
+      <Filter>WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="SecurityHelper.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Helpers">
@@ -169,27 +309,11 @@
     <Filter Include="CompoundFiles">
       <UniqueIdentifier>{710a3743-66ec-4746-b502-aacc34dfc091}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resources">
-      <UniqueIdentifier>{231c6c75-96a7-4165-a773-29ca474d7abf}</UniqueIdentifier>
+    <Filter Include="DarkMode">
+      <UniqueIdentifier>{56aeb4d9-6a77-44e4-aabd-92b22837e51c}</UniqueIdentifier>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="res\Collapsed.ico">
-      <Filter>Resources</Filter>
-    </Image>
-    <Image Include="res\Collapsed2.ico">
-      <Filter>Resources</Filter>
-    </Image>
-    <Image Include="res\Expanded.ico">
-      <Filter>Resources</Filter>
-    </Image>
-    <Image Include="res\Expanded2.ico">
-      <Filter>Resources</Filter>
-    </Image>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="WTLHelper.rc">
-      <Filter>Resources</Filter>
-    </ResourceCompile>
+    <Filter Include="WTL">
+      <UniqueIdentifier>{06acfe70-9638-421e-8fd0-0c9c4fedde6d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
