@@ -286,7 +286,8 @@
       <DllDataFileName />
     </Midl>
     <PostBuildEvent>
-      <Command>signtool sign /sha1 72747c7bcc50d4d109b76f70db640909746144b5 /t http://timestamp.digicert.com /fd sha256 $(TargetPath)</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseSigned|x64'">
@@ -341,6 +342,12 @@
     <ClInclude Include="AppSettings.h">
       <FileType>CppCode</FileType>
     </ClInclude>
+    <ClCompile Include="SearchDlg.cpp" />
+    <ClCompile Include="TextDlg.cpp" />
+    <ClCompile Include="ConnectDlg.cpp" />
+    <ClCompile Include="ExecMethodDlg.cpp" />
+    <ClCompile Include="QueryDlg.cpp" />
+    <ClCompile Include="EventsDlg.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="WMIExp.cpp" />
     <ClInclude Include="WMIHelper.h" />
@@ -351,6 +358,12 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="SecurityHelper.h" />
+    <ClInclude Include="SearchDlg.h" />
+    <ClInclude Include="TextDlg.h" />
+    <ClInclude Include="ConnectDlg.h" />
+    <ClInclude Include="ExecMethodDlg.h" />
+    <ClInclude Include="QueryDlg.h" />
+    <ClInclude Include="EventsDlg.h" />
     <ClInclude Include="Settings.h" />
   </ItemGroup>
   <ItemGroup>

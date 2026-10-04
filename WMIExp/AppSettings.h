@@ -11,6 +11,7 @@ struct AppSettings : Settings {
 		SETTING(ViewSystemProperties, 0, SettingType::Bool);
 		SETTING(ShowNamespacesInList, 0, SettingType::Bool);
 		SETTING(DerivedInstances, 1, SettingType::Bool);
+		SETTING(ClassHierarchy, 0, SettingType::Bool);
 		SETTING(DarkMode, -1, SettingType::Int32);		// 1 dark, 0 light, -1 (never chosen): as the system is
 	END_SETTINGS
 
@@ -23,5 +24,6 @@ struct AppSettings : Settings {
 	DEF_SETTING(ViewSystemProperties, int)
 	DEF_SETTING(ShowNamespacesInList, int)
 	DEF_SETTING(DerivedInstances, int)
+	DEF_SETTING(ClassHierarchy, int)
 	DEF_SETTING(DarkMode, int)
 };

@@ -75,23 +75,36 @@ BEGIN
     BEGIN
         MENUITEM "&Run As Administrator",       ID_FILE_RUNASADMINISTRATOR
         MENUITEM SEPARATOR
+        MENUITEM "&Connect...",                 ID_FILE_CONNECT
+        MENUITEM SEPARATOR
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
     POPUP "&Edit"
     BEGIN
         MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
+        MENUITEM SEPARATOR
+        MENUITEM "&Find...\tCtrl+F",            ID_EDIT_FIND
     END
     POPUP "&View"
     BEGIN
         MENUITEM "&System Classes",             ID_VIEW_SYSTEMCLASSES
         MENUITEM "System &Properties",          ID_VIEW_SYSTEMPROPERTIES
         MENUITEM "&Namespaces in List",         ID_VIEW_NAMESPACESINLIST
-        MENUITEM "Include &Derived Instances", ID_VIEW_DERIVEDINSTANCES
+        MENUITEM "Include &Derived Instances",  ID_VIEW_DERIVEDINSTANCES
+        MENUITEM "Class &Hierarchy",            ID_VIEW_CLASSHIERARCHY
         MENUITEM SEPARATOR
         MENUITEM "&Refresh\tF5",                ID_VIEW_REFRESH
         MENUITEM SEPARATOR
         MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
         MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
+    END
+    POPUP "&Tools"
+    BEGIN
+        MENUITEM "&Query...\tCtrl+Q",           ID_TOOLS_QUERY
+        MENUITEM "&Event Viewer...\tCtrl+E",    ID_TOOLS_EVENTS
+        MENUITEM SEPARATOR
+        MENUITEM "E&xecute Method...",          ID_TOOLS_EXECUTEMETHOD
+        MENUITEM "Show &MOF...\tCtrl+M",        ID_TOOLS_SHOWMOF
     END
     POPUP "&Options"
     BEGIN
@@ -155,6 +168,98 @@ BEGIN
                     "SysLink",WS_TABSTOP,33,38,164,8
 END
 
+IDD_SEARCH DIALOGEX 0, 0, 420, 260
+STYLE DS_SETFONT | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Search"
+FONT 9, "Segoe UI", 0, 0, 0x0
+BEGIN
+    LTEXT           "Fi&nd:",IDC_STATIC,7,9,22,8
+    EDITTEXT        IDC_TEXT,32,7,268,14,ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "&Search",IDC_SEARCH,306,7,50,14
+    PUSHBUTTON      "S&top",IDC_STOP,363,7,50,14
+    CONTROL         "N&amespaces",IDC_NAMESPACES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,26,60,10
+    CONTROL         "&Classes",IDC_CLASSES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,96,26,46,10
+    CONTROL         "&Properties",IDC_PROPERTIES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,146,26,52,10
+    CONTROL         "M&ethods",IDC_METHODS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,202,26,48,10
+    CONTROL         "&Match case",IDC_MATCHCASE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,254,26,55,10
+    CONTROL         "",IDC_RESULTS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,42,406,190
+    LTEXT           "",IDC_STATUS,7,242,340,8,SS_ENDELLIPSIS
+    PUSHBUTTON      "Close",IDCANCEL,363,239,50,14
+END
+
+IDD_QUERY DIALOGEX 0, 0, 440, 280
+STYLE DS_SETFONT | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "WQL Query"
+FONT 9, "Segoe UI", 0, 0, 0x0
+BEGIN
+    LTEXT           "&Namespace:",IDC_STATIC,7,9,40,8
+    EDITTEXT        IDC_NAMESPACE,50,7,326,14,ES_AUTOHSCROLL
+    LTEXT           "&Query:",IDC_STATIC,7,27,40,8
+    EDITTEXT        IDC_QUERY,50,25,326,40,ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL
+    DEFPUSHBUTTON   "&Run",IDC_RUN,383,7,50,14
+    PUSHBUTTON      "S&top",IDC_STOP,383,25,50,14
+    CONTROL         "",IDC_RESULTS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,72,426,180
+    LTEXT           "",IDC_STATUS,7,262,360,8,SS_ENDELLIPSIS
+    PUSHBUTTON      "Close",IDCANCEL,383,259,50,14
+END
+
+IDD_EVENTS DIALOGEX 0, 0, 440, 280
+STYLE DS_SETFONT | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Event Viewer"
+FONT 9, "Segoe UI", 0, 0, 0x0
+BEGIN
+    LTEXT           "&Namespace:",IDC_STATIC,7,9,40,8
+    EDITTEXT        IDC_NAMESPACE,50,7,326,14,ES_AUTOHSCROLL
+    LTEXT           "&Query:",IDC_STATIC,7,27,40,8
+    EDITTEXT        IDC_QUERY,50,25,326,40,ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL
+    DEFPUSHBUTTON   "&Start",IDC_START,383,7,50,14
+    PUSHBUTTON      "S&top",IDC_STOP,383,25,50,14
+    PUSHBUTTON      "C&lear",IDC_CLEAR,383,43,50,14
+    CONTROL         "",IDC_RESULTS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,72,426,180
+    LTEXT           "",IDC_STATUS,7,262,360,8,SS_ENDELLIPSIS
+    PUSHBUTTON      "Close",IDCANCEL,383,259,50,14
+END
+
+IDD_CONNECT DIALOGEX 0, 0, 250, 118
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Connect"
+FONT 9, "Segoe UI", 0, 0, 0x0
+BEGIN
+    LTEXT           "&Computer:",IDC_STATIC,7,9,50,8
+    EDITTEXT        IDC_COMPUTER,60,7,183,14,ES_AUTOHSCROLL
+    LTEXT           "&User:",IDC_STATIC,7,27,50,8
+    EDITTEXT        IDC_USER,60,25,183,14,ES_AUTOHSCROLL
+    LTEXT           "&Password:",IDC_STATIC,7,45,50,8
+    EDITTEXT        IDC_PASSWORD,60,43,183,14,ES_PASSWORD | ES_AUTOHSCROLL
+    LTEXT           "Leave the computer empty for this computer, and the user empty to connect as the current user (domain\\user or user@domain). Credentials can only be used with a remote computer.",IDC_STATIC,7,62,236,26
+    DEFPUSHBUTTON   "Connect",IDOK,139,97,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,193,97,50,14
+END
+
+IDD_EXECMETHOD DIALOGEX 0, 0, 320, 150
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Execute Method"
+FONT 9, "Segoe UI", 0, 0, 0x0
+BEGIN
+    LTEXT           "",IDC_TARGET,7,7,306,16,SS_ENDELLIPSIS
+    LTEXT           "Input parameters:",IDC_PARAMS,7,28,306,8
+    LTEXT           "Output:",IDC_STATIC,7,44,60,8
+    EDITTEXT        IDC_OUTPUT,7,55,306,68,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    DEFPUSHBUTTON   "&Execute",IDC_RUN,209,129,50,14
+    PUSHBUTTON      "Close",IDCANCEL,263,129,50,14
+END
+
+IDD_TEXT DIALOGEX 0, 0, 380, 260
+STYLE DS_SETFONT | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "MOF"
+FONT 9, "Segoe UI", 0, 0, 0x0
+BEGIN
+    EDITTEXT        IDC_TEXT,7,7,366,226,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | WS_VSCROLL | WS_HSCROLL
+    PUSHBUTTON      "&Copy",IDC_COPY,7,239,50,14
+    PUSHBUTTON      "&Save As...",IDC_SAVE,61,239,50,14
+    DEFPUSHBUTTON   "Close",IDCANCEL,323,239,50,14
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -187,6 +292,10 @@ BEGIN
     "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL
     "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL
+    "F",            ID_EDIT_FIND,           VIRTKEY, CONTROL
+    "Q",            ID_TOOLS_QUERY,         VIRTKEY, CONTROL
+    "E",            ID_TOOLS_EVENTS,        VIRTKEY, CONTROL
+    "M",            ID_TOOLS_SHOWMOF,       VIRTKEY, CONTROL
     "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL
     VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT
     VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT
@@ -204,8 +313,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,2,0,0
- PRODUCTVERSION 0,2,0,0
+ FILEVERSION 0,4,0,0
+ PRODUCTVERSION 0,4,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -222,12 +331,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Scorpio Software"
             VALUE "FileDescription", "WMI Explorer"
-            VALUE "FileVersion", "0.2.0.0"
+            VALUE "FileVersion", "0.4.0.0"
             VALUE "InternalName", "WMIExp"
-            VALUE "LegalCopyright", "©2021-2025 Pavel Yosifovich"
+            VALUE "LegalCopyright", "©2021-2026 Pavel Yosifovich"
             VALUE "OriginalFilename", "WMIExp.exe"
             VALUE "ProductName", "WMI Explorer"
-            VALUE "ProductVersion", "0.2.0.0"
+            VALUE "ProductVersion", "0.4.0.0"
         END
     END
     BLOCK "VarFileInfo"

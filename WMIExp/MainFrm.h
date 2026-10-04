@@ -8,16 +8,23 @@
 #include "WMIHelper.h"
 #include <CustomSplitterWindow.h>
 #include <TreeViewHelper.h>
+#include "SearchDlg.h"
+#include "QueryDlg.h"
+#include "EventsDlg.h"
 
 class CMainFrame :
 	public CFrameWindowImpl<CMainFrame>,
 	public CAutoUpdateUI<CMainFrame>,
 	public CVirtualListView<CMainFrame>,
 	public CTreeViewHelper<CMainFrame>,
-	public CMessageFilter, 
-	public CIdleHandler {
+	public CMessageFilter,
+	public CIdleHandler,
+	public ISearchNavigator {
 public:
 	DECLARE_FRAME_WND_CLASS(L"WMIEXPWNDCLASS", IDR_MAINFRAME)
+
+	// ISearchNavigator
+	bool NavigateTo(SearchResult const& result) override;
 
 	const UINT WM_INSTANCES = WM_APP + 6;
 
@@ -31,18 +38,27 @@ public:
 
 	void OnStateChanged(HWND h, int from, int to, UINT oldState, UINT newState);
 	void DoSort(const SortInfo* si);
+	bool OnDoubleClickList(HWND h, int row, int col, POINT const& pt);
 
 	BEGIN_MSG_MAP(CMainFrame)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		NOTIFY_CODE_HANDLER(TVN_ITEMEXPANDING, OnTreeItemExpanding)
 		NOTIFY_CODE_HANDLER(TVN_SELCHANGED, OnTreeSelChanged)
+		NOTIFY_CODE_HANDLER(TVN_GETINFOTIP, OnTreeGetInfoTip)
 		MESSAGE_HANDLER(WM_INSTANCES, OnAddInstances)
 		COMMAND_ID_HANDLER(ID_VIEW_SYSTEMCLASSES, OnViewSystemClasses)
 		COMMAND_ID_HANDLER(ID_VIEW_SYSTEMPROPERTIES, OnViewSystemProperties)
 		COMMAND_ID_HANDLER(ID_VIEW_NAMESPACESINLIST, OnViewNamespacesInList)
 		COMMAND_ID_HANDLER(ID_VIEW_DERIVEDINSTANCES, OnViewDerivedInstances)
+		COMMAND_ID_HANDLER(ID_VIEW_CLASSHIERARCHY, OnViewClassHierarchy)
+		COMMAND_ID_HANDLER(ID_FILE_CONNECT, OnConnect)
+		COMMAND_ID_HANDLER(ID_TOOLS_QUERY, OnQuery)
+		COMMAND_ID_HANDLER(ID_TOOLS_EVENTS, OnEvents)
+		COMMAND_ID_HANDLER(ID_TOOLS_EXECUTEMETHOD, OnExecuteMethod)
+		COMMAND_ID_HANDLER(ID_TOOLS_SHOWMOF, OnShowMof)
 		COMMAND_ID_HANDLER(ID_VIEW_REFRESH, OnViewRefresh)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnEditCopy)
+		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnEditFind)
 		COMMAND_ID_HANDLER(ID_OPTIONS_SINGLEINSTANCE, OnSingleInstance)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
 		COMMAND_ID_HANDLER(ID_VIEW_TOOLBAR, OnViewToolBar)
@@ -66,7 +82,7 @@ public:
 
 private:
 	enum class ColumnType {
-		Name, Value, Type, Size, CimType, Details
+		Name, Value, Type, Size, CimType, Details, Description
 	};
 	enum class NodeType {
 		Computer, Namespace, Class, Property, Method, Instance, HasChildren = 0x80
@@ -77,6 +93,9 @@ private:
 		CIMTYPE CimType;
 		NodeType Type;
 		CComVariant Value;
+		// loaded when first shown (for classes in a namespace's list: it needs another call to WMI)
+		mutable CString Description;
+		mutable bool DescriptionLoaded{ false };
 	};
 
 	struct WmiObject {
@@ -90,21 +109,25 @@ private:
 	};
 
 	static PCWSTR NodeTypeToText(NodeType type);
-	static CString CimTypeToString(CIMTYPE type);
-	static CString GetArrayValue(CComVariant const& value, CIMTYPE type);
-	static CString FormatValue(CComVariant const& value, CIMTYPE type);
-	static CString FormatDateTime(PCWSTR dmtf);
-	static int CompareValues(CComVariant const& v1, CComVariant const& v2, CIMTYPE type);
+	static CString FlattenText(CString text);
 
 	void InitMenu(HMENU menu);
 	void InitToolBar(CToolBarCtrl& tb, int size = 24);
 	void InitTree();
 	void BuildTree(IWbemServices* pWmi, HTREEITEM hParent);
+	void LoadNamespaceChildren(HTREEITEM hItem);
+	HTREEITEM FindChildItem(HTREEITEM hParent, CString const& name, NodeType type);
+	HTREEITEM FindClassItem(HTREEITEM hNamespace, CString const& name);
+	HTREEITEM GetNamespaceItem(HTREEITEM hItem) const;
+	CString GetClassDescription(CString const& nsPath, CString const& className);
+	void ExecuteMethod(WmiItem const& method);
+	void UpdateTitle();
 	void UpdateList();
 	void CancelInstanceEnum();
 	void BuildInstanceColumns();
 	void ClearInstanceColumns();
 	void SortInstances(const SortInfo* si);
+	void SortItemsByValue(const SortInfo* si, ColumnType column);
 	CString GetObjectDetails(WmiItem const& item) const;
 	CString GetObjectValue(WmiItem const& item) const;
 	void TreeItemSelected(HTREEITEM hItem);
@@ -130,11 +153,19 @@ private:
 	LRESULT OnViewDerivedInstances(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEditCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnEditFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSingleInstance(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnShowWindow(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnRunAsAdmin(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleDarkMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnViewClassHierarchy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnConnect(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnQuery(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnEvents(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnExecuteMethod(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnShowMof(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnTreeGetInfoTip(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 
 	CCustomSplitterWindow m_Splitter;
 	CCustomHorSplitterWindow m_DetailSplitter;
@@ -149,12 +180,18 @@ private:
 	std::vector<WMIProperty> m_ObjPropValues;
 	HANDLE m_hSingleInstMutex;
 	HTREEITEM m_hRoot;
+	CSearchDlg m_SearchDlg{ this };
+	CQueryDlg m_QueryDlg;
+	CEventsDlg m_EventsDlg;
 	CString m_NamespacePath;
 	CComPtr<IWbemServices> m_spWmi;
 	CComPtr<IWbemServices> m_spCurrentNamespace;
 	CComPtr<IWbemClassObject> m_spCurrentClass;
-	// the instance enumeration in progress (if any), and the namespace it runs in (needed to cancel it)
-	CComPtr<IWbemObjectSink> m_spEnumSink;
-	CComPtr<IWbemServices> m_spEnumNamespace;
+	// the instance enumeration in progress (if any)
+	std::shared_ptr<WMIQueryJob> m_EnumJob;
+	// class descriptions for the tree's tooltips (key: namespace path:class), and the namespace of the last one
+	std::map<CString, CString> m_ClassDescriptions;
+	CComPtr<IWbemServices> m_spTipNamespace;
+	CString m_TipNamespacePath;
 	const CString m_RootName{ L"ROOT" };
 };

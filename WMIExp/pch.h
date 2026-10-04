@@ -29,7 +29,13 @@ extern CAppModule _Module;
 #include <algorithm>
 #include <string>
 #include <map>
+#include <set>
+#include <optional>
 #include <utility>
+#include <numeric>
+#include <thread>
+#include <atomic>
+#include <functional>
 #include <wil\com.h>
 #include <format>
 
