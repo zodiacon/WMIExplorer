@@ -19,6 +19,8 @@ public:
 
 	// the namespace and query are filled in (if the query box is empty)
 	void Activate(HWND hOwner, CString const& ns, CString const& className);
+	// shows the dialog with this query, and runs it
+	void Run(HWND hOwner, CString const& ns, CString const& query);
 	void Reset();
 
 	CString GetColumnText(HWND, int row, int col) const;
@@ -56,6 +58,7 @@ private:
 
 	void BuildColumns();
 	void Cancel();
+	void RunQuery();
 	void UpdateButtons();
 
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -66,6 +69,8 @@ private:
 
 	CListViewCtrl m_List;
 	std::vector<CComPtr<IWbemClassObject>> m_Objects;
+	// the namespace of the results (references in them can be relative to it)
+	CComPtr<IWbemServices> m_spSvc;
 	std::vector<Column> m_Columns;
 	std::shared_ptr<WMIQueryJob> m_Job;
 	DWORD m_StartTime{ 0 };

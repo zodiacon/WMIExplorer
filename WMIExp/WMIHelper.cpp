@@ -429,6 +429,38 @@ std::vector<CComBSTR> WMIHelper::GetNames(IWbemClassObject* pObj) {
 	return names;
 }
 
+HRESULT WMIHelper::GetObjectByPath(IWbemServices* pSvc, CString const& path, IWbemClassObject** ppObj, IWbemServices** ppSvc) {
+	CString relPath(path);
+	if (relPath.Left(2) == L"\\\\") {
+		// the computer is the connection's (a computer name can have dots: skipped before looking for the class)
+		int slash = relPath.Find(L'\\', 2);
+		if (slash < 0)
+			return WBEM_E_INVALID_OBJECT_PATH;
+		relPath = relPath.Mid(slash + 1);
+	}
+
+	// the namespace ends with the colon before the class name (key values can have colons, as in DeviceID="C:")
+	CComPtr<IWbemServices> spSvc(pSvc);
+	int end = relPath.FindOneOf(L".=");
+	int colon = relPath.Left(end < 0 ? relPath.GetLength() : end).Find(L':');
+	if (colon >= 0) {
+		spSvc.Release();
+		auto hr = Connect(CurrentConnection(), relPath.Left(colon), &spSvc);
+		if (FAILED(hr))
+			return hr;
+		relPath = relPath.Mid(colon + 1);
+	}
+	if (spSvc == nullptr)
+		return WBEM_E_INVALID_NAMESPACE;
+
+	auto hr = spSvc->GetObject(CComBSTR(relPath), 0, nullptr, ppObj, nullptr);
+	if (FAILED(hr))
+		return hr;
+	if (ppSvc)
+		*ppSvc = spSvc.Detach();
+	return S_OK;
+}
+
 CString WMIHelper::GetStringProperty(IWbemClassObject* pObj, PCWSTR name) {
 	CComVariant value;
 	if (FAILED(pObj->Get(name, 0, &value, nullptr, nullptr)))

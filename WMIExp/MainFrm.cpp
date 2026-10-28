@@ -16,6 +16,7 @@
 #include "TextDlg.h"
 #include "ConnectDlg.h"
 #include "ExecMethodDlg.h"
+#include "ObjectDlg.h"
 
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg) {
 	// the (modeless) dialogs get their keyboard handling, and not the main window's accelerators
@@ -23,6 +24,12 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg) {
 		if (hDlg && (pMsg->hwnd == hDlg || ::IsChild(hDlg, pMsg->hwnd)))
 			return ::IsDialogMessage(hDlg, pMsg);
 	}
+
+	// the context menu from the keyboard (Shift+F10 or the menu key)
+	bool contextKey = (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_APPS) ||
+		((pMsg->message == WM_SYSKEYDOWN || pMsg->message == WM_KEYDOWN) && pMsg->wParam == VK_F10 && ::GetKeyState(VK_SHIFT) < 0);
+	if (contextKey && ShowContextMenu(pMsg->hwnd, CPoint(), true))
+		return TRUE;
 
 	return CFrameWindowImpl<CMainFrame>::PreTranslateMessage(pMsg);
 }
@@ -85,11 +92,25 @@ CString CMainFrame::FlattenText(CString text) {
 	return text.Trim();
 }
 
-bool CMainFrame::OnDoubleClickList(HWND h, int row, int, POINT const&) {
+bool CMainFrame::OnDoubleClickList(HWND h, int row, int col, POINT const&) {
 	if (h == m_InstanceList) {
 		if (row < 0 || row >= (int)m_Objects.size())
 			return false;
-		CTextDlg::ShowObject(m_hWnd, m_Objects[row].Object.get());
+
+		// a reference (or an embedded object or array) opens what it holds; anywhere else, the instance's properties
+		auto obj = m_Objects[row].Object.get();
+		if (col >= 0) {
+			auto index = GetColumnManager(h)->GetColumnTag<int>(col);
+			if (index < (int)m_InstanceColumns.size()) {
+				auto& column = m_InstanceColumns[index];
+				CComVariant value;
+				if (SUCCEEDED(obj->Get(column.Name, 0, &value, nullptr, nullptr)) &&
+					CObjectDlg::ShowValue(m_hWnd, m_spCurrentNamespace, column.Name, value, column.Type))
+					return true;
+			}
+		}
+		CObjectDlg dlg(m_spCurrentNamespace, obj);
+		dlg.DoModal(m_hWnd);
 		return true;
 	}
 	if (h == m_List && row >= 0 && row < (int)m_Items.size()) {
@@ -98,6 +119,12 @@ bool CMainFrame::OnDoubleClickList(HWND h, int row, int, POINT const&) {
 			case NodeType::Method:
 				ExecuteMethod(item);
 				return true;
+
+			case NodeType::Property:
+				// the selected instance's value
+				if (auto prop = FindInstanceProperty(item))
+					return CObjectDlg::ShowValue(m_hWnd, m_spCurrentNamespace, item.Name.c_str(), prop->Value, prop->Type);
+				return false;
 
 			case NodeType::Class:
 			case NodeType::Namespace:
@@ -696,6 +723,175 @@ LRESULT CMainFrame::OnEditCopy(WORD, WORD, HWND, BOOL&) {
 	return 0;
 }
 
+CString CMainFrame::GetTreeItemPath(HTREEITEM hItem) const {
+	if (GetTreeNodeType(hItem) == NodeType::Namespace)
+		return GetFullItemPath(m_Tree, hItem);
+
+	CString name;
+	m_Tree.GetItemText(hItem, name);
+	return GetFullItemPath(m_Tree, GetNamespaceItem(hItem)) + L":" + name;
+}
+
+LRESULT CMainFrame::OnEditCopyPath(WORD, WORD, HWND, BOOL&) {
+	auto hFocus = ::GetFocus();
+	CString text;
+	if (hFocus == m_InstanceList) {
+		int index = m_InstanceList.GetSelectedIndex();
+		if (index >= 0 && index < (int)m_Objects.size())
+			text = WMIHelper::GetStringProperty(m_Objects[index].Object.get(), L"__PATH");
+	}
+	else if (hFocus == m_List) {
+		// a namespace or class in the list, or the class of a property or method
+		int index = m_List.GetSelectedIndex();
+		if (index >= 0 && index < (int)m_Items.size() && !m_NamespacePath.IsEmpty()) {
+			auto& item = m_Items[index];
+			switch (item.Type) {
+				case NodeType::Namespace: text = m_NamespacePath + L"\\" + item.Name.c_str(); break;
+				case NodeType::Class: text = m_NamespacePath + L":" + item.Name.c_str(); break;
+				default:
+					if (m_spCurrentClass)
+						text = m_NamespacePath + L":" + WMIHelper::GetStringProperty(m_spCurrentClass, L"__CLASS");
+					break;
+			}
+		}
+	}
+	else if (auto hItem = m_Tree.GetSelectedItem()) {
+		text = GetTreeItemPath(hItem);
+	}
+	if (!text.IsEmpty())
+		ClipboardHelper::CopyText(m_hWnd, text);
+	return 0;
+}
+
+LRESULT CMainFrame::OnObjectProperties(WORD, WORD, HWND, BOOL&) {
+	int index = m_InstanceList.GetSelectedIndex();
+	if (index < 0 || index >= (int)m_Objects.size()) {
+		AtlMessageBox(m_hWnd, L"Select an instance.", IDS_TITLE, MB_ICONINFORMATION);
+		return 0;
+	}
+	CObjectDlg dlg(m_spCurrentNamespace, m_Objects[index].Object.get());
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnOpenValue(WORD, WORD, HWND, BOOL&) {
+	int index = m_List.GetSelectedIndex();
+	if (index >= 0 && index < (int)m_Items.size()) {
+		auto& item = m_Items[index];
+		if (auto prop = FindInstanceProperty(item))
+			CObjectDlg::ShowValue(m_hWnd, m_spCurrentNamespace, item.Name.c_str(), prop->Value, prop->Type);
+	}
+	return 0;
+}
+
+//
+// ASSOCIATORS OF or REFERENCES OF the selected instance (if the instance list has the focus),
+// otherwise of the selected class (with SchemaOnly: the association classes, or the classes they associate it with)
+//
+LRESULT CMainFrame::OnRelatedObjects(WORD, WORD id, HWND, BOOL&) {
+	auto verb = id == ID_OBJECT_ASSOCIATORS ? L"ASSOCIATORS" : L"REFERENCES";
+	CString query;
+	int index = m_InstanceList.GetSelectedIndex();
+	if (::GetFocus() == m_InstanceList && index >= 0 && index < (int)m_Objects.size())
+		query = std::format(L"{} OF {{{}}}", verb, (PCWSTR)WMIHelper::GetStringProperty(m_Objects[index].Object.get(), L"__RELPATH")).c_str();
+	else if (m_spCurrentClass)
+		query = std::format(L"{} OF {{{}}} WHERE SchemaOnly", verb, (PCWSTR)WMIHelper::GetStringProperty(m_spCurrentClass, L"__CLASS")).c_str();
+	else {
+		AtlMessageBox(m_hWnd, L"Select a class or an instance.", IDS_TITLE, MB_ICONINFORMATION);
+		return 0;
+	}
+	m_QueryDlg.Run(m_hWnd, m_NamespacePath, query);
+	return 0;
+}
+
+//
+// (WM_CONTEXTMENU from the controls doesn't reach the frame through the splitters: NM_RCLICK does,
+// and the keyboard is handled in PreTranslateMessage)
+//
+LRESULT CMainFrame::OnRightClick(int, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_Tree && hdr->hwndFrom != m_List && hdr->hwndFrom != m_InstanceList) {
+		bHandled = FALSE;
+		return 0;
+	}
+	ShowContextMenu(hdr->hwndFrom, CPoint(::GetMessagePos()), false);
+	return 1;		// (no WM_CONTEXTMENU)
+}
+
+bool CMainFrame::ShowContextMenu(HWND hWnd, CPoint pt, bool keyboard) {
+	int popup;
+
+	if (hWnd == m_Tree) {
+		HTREEITEM hItem;
+		if (keyboard) {
+			hItem = m_Tree.GetSelectedItem();
+			CRect rc;
+			if (hItem && m_Tree.GetItemRect(hItem, &rc, TRUE)) {
+				pt = CPoint(rc.left, rc.bottom);
+				m_Tree.ClientToScreen(&pt);
+			}
+		}
+		else {
+			// (a right click does not select the item)
+			auto client = pt;
+			m_Tree.ScreenToClient(&client);
+			UINT flags = 0;
+			hItem = m_Tree.HitTest(client, &flags);
+			if ((flags & TVHT_ONITEM) == 0)
+				hItem = nullptr;
+		}
+		if (hItem == nullptr)
+			return false;
+
+		m_Tree.SetFocus();
+		if (hItem != m_Tree.GetSelectedItem())
+			m_Tree.SelectItem(hItem);
+		// now, not when the selection timer fires: the commands act on the selected class
+		if (KillTimer(2))
+			TreeItemSelected(hItem);
+		popup = GetTreeNodeType(hItem) == NodeType::Class ? 1 : 0;
+	}
+	else if (hWnd == m_List || hWnd == m_InstanceList) {
+		// (a right click selects the row)
+		CListViewCtrl list(hWnd);
+		int index;
+		if (keyboard) {
+			index = list.GetSelectedIndex();
+			CRect rc;
+			if (index >= 0 && list.GetItemRect(index, &rc, LVIR_LABEL)) {
+				pt = CPoint(rc.left, rc.bottom);
+				list.ClientToScreen(&pt);
+			}
+		}
+		else {
+			auto client = pt;
+			list.ScreenToClient(&client);
+			index = list.HitTest(client, nullptr);
+		}
+		if (index < 0)
+			return false;
+		popup = hWnd == m_InstanceList ? 2 : 3;
+	}
+	else {
+		return false;
+	}
+
+	CMenu menu;
+	menu.LoadMenu(IDR_CONTEXTMENU);
+	CMenuHandle sub = menu.GetSubMenu(popup);
+	if (popup == 3) {
+		// a property or method of the class, or a class or namespace of the namespace
+		int index = m_List.GetSelectedIndex();
+		auto item = index >= 0 && index < (int)m_Items.size() ? &m_Items[index] : nullptr;
+		auto prop = item ? FindInstanceProperty(*item) : nullptr;
+		auto enable = [&](UINT id, bool enabled) { sub.EnableMenuItem(id, MF_BYCOMMAND | (enabled ? MF_ENABLED : MF_GRAYED)); };
+		enable(ID_OBJECT_OPENVALUE, prop && CObjectDlg::CanShowValue(prop->Value, prop->Type));
+		enable(ID_TOOLS_EXECUTEMETHOD, item && item->Type == NodeType::Method);
+		enable(ID_TOOLS_SHOWMOF, item && item->Type == NodeType::Class);
+	}
+	sub.TrackPopupMenu(TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd);
+	return true;
+}
+
 LRESULT CMainFrame::OnSingleInstance(WORD, WORD id, HWND, BOOL&) {
 	bool single;
 	AppSettings::Get().SingleInstance(single = !AppSettings::Get().SingleInstance());
@@ -933,11 +1129,11 @@ void CMainFrame::SortItemsByValue(const SortInfo* si, ColumnType column) {
 		if (column == ColumnType::Value)
 			value = item.Value;
 		else {
-			auto it = std::ranges::find_if(m_ObjPropValues, [&](auto const& p) { return p.Name == item.Name.c_str(); });
-			if (it == m_ObjPropValues.end())
+			auto prop = FindInstanceProperty(item);
+			if (prop == nullptr)
 				return key;
-			value = it->Value;
-			type = it->Type;
+			value = prop->Value;
+			type = prop->Type;
 		}
 		switch (type) {
 			case CIM_SINT8: case CIM_UINT8: case CIM_SINT16: case CIM_UINT16:
@@ -980,19 +1176,19 @@ void CMainFrame::SortItemsByValue(const SortInfo* si, ColumnType column) {
 	m_Items = std::move(items);
 }
 
+WMIProperty const* CMainFrame::FindInstanceProperty(WmiItem const& item) const {
+	if (item.Type != NodeType::Property)
+		return nullptr;
+	auto it = std::ranges::find_if(m_ObjPropValues, [&](auto const& p) { return p.Name == item.Name.c_str(); });
+	return it == m_ObjPropValues.end() ? nullptr : &*it;
+}
+
 CString CMainFrame::GetObjectDetails(WmiItem const& item) const {
 	switch (item.Type) {
 		case NodeType::Property:
-		{
-			if (m_ObjPropValues.empty())
-				return L"";
-
-			auto it = std::find_if(m_ObjPropValues.begin(), m_ObjPropValues.end(), [&](auto const& p) { return p.Name == item.Name.c_str(); });
-			if (it == m_ObjPropValues.end())
-				return L"";
-
-			return WMIHelper::FormatValue(it->Value, it->Type);
-		}
+			if (auto prop = FindInstanceProperty(item))
+				return WMIHelper::FormatValue(prop->Value, prop->Type);
+			return L"";
 
 		case NodeType::Method:
 			if (item.Object) {	// in params

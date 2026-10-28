@@ -46,6 +46,7 @@ public:
 		NOTIFY_CODE_HANDLER(TVN_SELCHANGED, OnTreeSelChanged)
 		NOTIFY_CODE_HANDLER(TVN_GETINFOTIP, OnTreeGetInfoTip)
 		MESSAGE_HANDLER(WM_INSTANCES, OnAddInstances)
+		NOTIFY_CODE_HANDLER(NM_RCLICK, OnRightClick)
 		COMMAND_ID_HANDLER(ID_VIEW_SYSTEMCLASSES, OnViewSystemClasses)
 		COMMAND_ID_HANDLER(ID_VIEW_SYSTEMPROPERTIES, OnViewSystemProperties)
 		COMMAND_ID_HANDLER(ID_VIEW_NAMESPACESINLIST, OnViewNamespacesInList)
@@ -58,6 +59,11 @@ public:
 		COMMAND_ID_HANDLER(ID_TOOLS_SHOWMOF, OnShowMof)
 		COMMAND_ID_HANDLER(ID_VIEW_REFRESH, OnViewRefresh)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnEditCopy)
+		COMMAND_ID_HANDLER(ID_EDIT_COPYPATH, OnEditCopyPath)
+		COMMAND_ID_HANDLER(ID_OBJECT_PROPERTIES, OnObjectProperties)
+		COMMAND_ID_HANDLER(ID_OBJECT_OPENVALUE, OnOpenValue)
+		COMMAND_ID_HANDLER(ID_OBJECT_ASSOCIATORS, OnRelatedObjects)
+		COMMAND_ID_HANDLER(ID_OBJECT_REFERENCES, OnRelatedObjects)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnEditFind)
 		COMMAND_ID_HANDLER(ID_OPTIONS_SINGLEINSTANCE, OnSingleInstance)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
@@ -130,6 +136,13 @@ private:
 	void SortItemsByValue(const SortInfo* si, ColumnType column);
 	CString GetObjectDetails(WmiItem const& item) const;
 	CString GetObjectValue(WmiItem const& item) const;
+	// the value of a property (of m_Items) in the selected instance
+	WMIProperty const* FindInstanceProperty(WmiItem const& item) const;
+	// a namespace's path, or a class's (namespace:class)
+	CString GetTreeItemPath(HTREEITEM hItem) const;
+	// the context menu of the tree or a list; keyboard: at the selected item, otherwise at pt (screen).
+	// false if hWnd is none of them, or there is no item there
+	bool ShowContextMenu(HWND hWnd, CPoint pt, bool keyboard);
 	void TreeItemSelected(HTREEITEM hItem);
 	void RefreshList();
 
@@ -153,6 +166,11 @@ private:
 	LRESULT OnViewDerivedInstances(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEditCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnEditCopyPath(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnObjectProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnOpenValue(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnRelatedObjects(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnRightClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnEditFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSingleInstance(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnShowWindow(UINT, WPARAM, LPARAM, BOOL&);

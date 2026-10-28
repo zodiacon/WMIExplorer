@@ -82,6 +82,7 @@ BEGIN
     POPUP "&Edit"
     BEGIN
         MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
+        MENUITEM "Copy &Path\tCtrl+Shift+C",    ID_EDIT_COPYPATH
         MENUITEM SEPARATOR
         MENUITEM "&Find...\tCtrl+F",            ID_EDIT_FIND
     END
@@ -103,8 +104,12 @@ BEGIN
         MENUITEM "&Query...\tCtrl+Q",           ID_TOOLS_QUERY
         MENUITEM "&Event Viewer...\tCtrl+E",    ID_TOOLS_EVENTS
         MENUITEM SEPARATOR
+        MENUITEM "&Properties...\tAlt+Enter",   ID_OBJECT_PROPERTIES
         MENUITEM "E&xecute Method...",          ID_TOOLS_EXECUTEMETHOD
         MENUITEM "Show &MOF...\tCtrl+M",        ID_TOOLS_SHOWMOF
+        MENUITEM SEPARATOR
+        MENUITEM "&Associators",                ID_OBJECT_ASSOCIATORS
+        MENUITEM "&References",                 ID_OBJECT_REFERENCES
     END
     POPUP "&Options"
     BEGIN
@@ -118,6 +123,56 @@ BEGIN
         MENUITEM "&About WMI Explorer...",      ID_APP_ABOUT
     END
 END
+
+
+IDR_CONTEXTMENU MENU
+BEGIN
+    POPUP "Namespace"
+    BEGIN
+        MENUITEM "&Copy Name\tCtrl+C",          ID_EDIT_COPY
+        MENUITEM "Copy &Path\tCtrl+Shift+C",    ID_EDIT_COPYPATH
+        MENUITEM SEPARATOR
+        MENUITEM "&Query...\tCtrl+Q",           ID_TOOLS_QUERY
+        MENUITEM SEPARATOR
+        MENUITEM "&Refresh\tF5",                ID_VIEW_REFRESH
+    END
+    POPUP "Class"
+    BEGIN
+        MENUITEM "&Copy Name\tCtrl+C",          ID_EDIT_COPY
+        MENUITEM "Copy &Path\tCtrl+Shift+C",    ID_EDIT_COPYPATH
+        MENUITEM SEPARATOR
+        MENUITEM "Show &MOF...\tCtrl+M",        ID_TOOLS_SHOWMOF
+        MENUITEM "&Query...\tCtrl+Q",           ID_TOOLS_QUERY
+        MENUITEM SEPARATOR
+        MENUITEM "&Associated Classes",         ID_OBJECT_ASSOCIATORS
+        MENUITEM "Association C&lasses",        ID_OBJECT_REFERENCES
+        MENUITEM SEPARATOR
+        MENUITEM "&Refresh\tF5",                ID_VIEW_REFRESH
+    END
+    POPUP "Instance"
+    BEGIN
+        MENUITEM "&Properties...\tAlt+Enter",   ID_OBJECT_PROPERTIES
+        MENUITEM "Show &MOF...\tCtrl+M",        ID_TOOLS_SHOWMOF
+        MENUITEM SEPARATOR
+        MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
+        MENUITEM "Copy &Path\tCtrl+Shift+C",    ID_EDIT_COPYPATH
+        MENUITEM SEPARATOR
+        MENUITEM "&Associators",                ID_OBJECT_ASSOCIATORS
+        MENUITEM "R&eferences",                 ID_OBJECT_REFERENCES
+        MENUITEM SEPARATOR
+        MENUITEM "&Refresh\tF5",                ID_VIEW_REFRESH
+    END
+    POPUP "Member"
+    BEGIN
+        MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
+        MENUITEM "Copy &Path\tCtrl+Shift+C",    ID_EDIT_COPYPATH
+        MENUITEM SEPARATOR
+        MENUITEM "&Open Value...",              ID_OBJECT_OPENVALUE
+        MENUITEM "E&xecute Method...",          ID_TOOLS_EXECUTEMETHOD
+        MENUITEM "Show &MOF...\tCtrl+M",        ID_TOOLS_SHOWMOF
+    END
+END
+
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -260,6 +315,18 @@ BEGIN
     DEFPUSHBUTTON   "Close",IDCANCEL,323,239,50,14
 END
 
+IDD_OBJECT DIALOGEX 0, 0, 400, 260
+STYLE DS_SETFONT | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Properties"
+FONT 9, "Segoe UI", 0, 0, 0x0
+BEGIN
+    CONTROL         "",IDC_RESULTS,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,7,386,226
+    PUSHBUTTON      "&Copy",IDC_COPY,7,239,50,14
+    PUSHBUTTON      "Show &MOF...",IDC_MOF,61,239,55,14
+    LTEXT           "",IDC_STATUS,122,242,215,8,SS_ENDELLIPSIS
+    DEFPUSHBUTTON   "Close",IDCANCEL,343,239,50,14
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -292,6 +359,7 @@ BEGIN
     "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL
     "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL
+    "C",            ID_EDIT_COPYPATH,       VIRTKEY, SHIFT, CONTROL
     "F",            ID_EDIT_FIND,           VIRTKEY, CONTROL
     "Q",            ID_TOOLS_QUERY,         VIRTKEY, CONTROL
     "E",            ID_TOOLS_EVENTS,        VIRTKEY, CONTROL
@@ -302,6 +370,7 @@ BEGIN
     VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL
     VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
+    VK_RETURN,      ID_OBJECT_PROPERTIES,   VIRTKEY, ALT
     VK_F6,          ID_NEXT_PANE,           VIRTKEY 
     VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT
 END

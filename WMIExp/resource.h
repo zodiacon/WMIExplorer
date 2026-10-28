@@ -9,6 +9,8 @@
 #define IDD_CONNECT                     215
 #define IDD_EXECMETHOD                  216
 #define IDD_TEXT                        217
+#define IDD_OBJECT                      218
+#define IDR_CONTEXTMENU                 219
 #define IDR_MAINFRAME                   128
 #define IDS_TITLE                       129
 #define IDI_COPY                        202
@@ -50,6 +52,7 @@
 #define IDC_CLEAR                       1023
 #define IDC_PARAMS                      1024
 #define IDC_COPY                        1025
+#define IDC_MOF                         1026
 #define ID_OPTIONS_ALWAYSONTOP          32775
 #define ID_OPTIONS_FONT                 32776
 #define ID_OPTIONS_SINGLEINSTANCE       32777
@@ -65,14 +68,19 @@
 #define ID_TOOLS_EXECUTEMETHOD          32788
 #define ID_TOOLS_SHOWMOF                32789
 #define ID_VIEW_CLASSHIERARCHY          32790
+#define ID_EDIT_COPYPATH                32791
+#define ID_OBJECT_PROPERTIES            32792
+#define ID_OBJECT_ASSOCIATORS           32793
+#define ID_OBJECT_REFERENCES            32794
+#define ID_OBJECT_OPENVALUE             32795
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        218
-#define _APS_NEXT_COMMAND_VALUE         32791
-#define _APS_NEXT_CONTROL_VALUE         1026
+#define _APS_NEXT_RESOURCE_VALUE        220
+#define _APS_NEXT_COMMAND_VALUE         32796
+#define _APS_NEXT_CONTROL_VALUE         1027
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

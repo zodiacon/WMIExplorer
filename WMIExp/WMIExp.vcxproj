@@ -144,7 +144,7 @@
       <DllDataFileName />
     </Midl>
     <PostBuildEvent>
-      <Command>signtool sign /sha1 72747c7bcc50d4d109b76f70db640909746144b5 /t http://timestamp.digicert.com /fd sha256 $(TargetPath)</Command>
+      <Command>signtool sign /a /sha1 005e539186924dedb83c0aecd2aeeea3044b88b7 /t http://timestamp.digicert.com /fd sha256 $(TargetPath)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -180,7 +180,7 @@
       <DllDataFileName />
     </Midl>
     <PostBuildEvent>
-      <Command>signtool sign /sha1 72747c7bcc50d4d109b76f70db640909746144b5 /t http://timestamp.digicert.com /fd sha256 $(TargetPath)</Command>
+      <Command>signtool sign /a /sha1 005e539186924dedb83c0aecd2aeeea3044b88b7 /t http://timestamp.digicert.com /fd sha256 $(TargetPath)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -215,7 +215,7 @@
       <DllDataFileName />
     </Midl>
     <PostBuildEvent>
-      <Command>signtool sign /sha1 72747c7bcc50d4d109b76f70db640909746144b5 /t http://timestamp.digicert.com /fd sha256 $(TargetPath)</Command>
+      <Command>signtool sign /a /sha1 005e539186924dedb83c0aecd2aeeea3044b88b7 /t http://timestamp.digicert.com /fd sha256 $(TargetPath)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseSigned|Win32'">
@@ -252,7 +252,7 @@
       </DllDataFileName>
     </Midl>
     <PostBuildEvent>
-      <Command>signtool sign /sha1 72747c7bcc50d4d109b76f70db640909746144b5 /t http://timestamp.digicert.com /fd sha256 $(TargetPath)</Command>
+      <Command>signtool sign /a /sha1 005e539186924dedb83c0aecd2aeeea3044b88b7 /t http://timestamp.digicert.com /fd sha256 $(TargetPath)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -323,7 +323,7 @@
       </DllDataFileName>
     </Midl>
     <PostBuildEvent>
-      <Command>signtool sign /sha1 72747c7bcc50d4d109b76f70db640909746144b5 /t http://timestamp.digicert.com /fd sha256 $(TargetPath)</Command>
+      <Command>signtool sign /a /sha1 005e539186924dedb83c0aecd2aeeea3044b88b7 /t http://timestamp.digicert.com /fd sha256 $(TargetPath)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -344,6 +344,7 @@
     </ClInclude>
     <ClCompile Include="SearchDlg.cpp" />
     <ClCompile Include="TextDlg.cpp" />
+    <ClCompile Include="ObjectDlg.cpp" />
     <ClCompile Include="ConnectDlg.cpp" />
     <ClCompile Include="ExecMethodDlg.cpp" />
     <ClCompile Include="QueryDlg.cpp" />
@@ -360,6 +361,7 @@
     <ClInclude Include="SecurityHelper.h" />
     <ClInclude Include="SearchDlg.h" />
     <ClInclude Include="TextDlg.h" />
+    <ClInclude Include="ObjectDlg.h" />
     <ClInclude Include="ConnectDlg.h" />
     <ClInclude Include="ExecMethodDlg.h" />
     <ClInclude Include="QueryDlg.h" />

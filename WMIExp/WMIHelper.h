@@ -57,6 +57,10 @@ struct WMIHelper abstract final {
 	// a proxy (services or enumerator) must have the connection's credentials set
 	static HRESULT SetSecurity(IUnknown* pProxy, WMIConnection const* conn);
 
+	// an object by its path: relative to pSvc's namespace, or with its own namespace (\\server\root\cimv2:Class.Key="...", on the current connection's computer).
+	// ppSvc (optional): the object's namespace
+	static HRESULT GetObjectByPath(IWbemServices* pSvc, CString const& path, IWbemClassObject** ppObj, IWbemServices** ppSvc = nullptr);
+
 	static CString GetStringProperty(IWbemClassObject* pObj, PCWSTR name);
 	static std::vector<CComPtr<IWbemClassObject>> EnumNamespaces(IWbemServices* pWmi);
 	static std::vector<CComPtr<IWbemClassObject>> EnumClasses(IWbemServices* pSvc, bool deep, bool includeSystemClasses = false);

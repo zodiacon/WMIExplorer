@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "QueryDlg.h"
 #include "WMIHelper.h"
-#include "TextDlg.h"
+#include "ObjectDlg.h"
 
 void CQueryDlg::Activate(HWND hOwner, CString const& ns, CString const& className) {
 	if (!IsWindow())
@@ -17,11 +17,23 @@ void CQueryDlg::Activate(HWND hOwner, CString const& ns, CString const& classNam
 	GotoDlgCtrl(GetDlgItem(IDC_QUERY));
 }
 
+void CQueryDlg::Run(HWND hOwner, CString const& ns, CString const& query) {
+	if (!IsWindow())
+		Create(hOwner);
+
+	SetDlgItemText(IDC_NAMESPACE, ns);
+	SetDlgItemText(IDC_QUERY, query);
+	ShowWindow(SW_SHOW);
+	SetActiveWindow();
+	RunQuery();
+}
+
 void CQueryDlg::Reset() {
 	if (!IsWindow())
 		return;
 	Cancel();
 	m_Objects.clear();
+	m_spSvc.Release();
 	m_List.SetItemCount(0);
 	SetDlgItemText(IDC_STATUS, L"");
 }
@@ -66,11 +78,23 @@ void CQueryDlg::DoSort(const SortInfo* si) {
 	m_Objects = std::move(sorted);
 }
 
-bool CQueryDlg::OnDoubleClickList(HWND, int row, int, POINT const&) {
+bool CQueryDlg::OnDoubleClickList(HWND, int row, int col, POINT const&) {
 	if (row < 0 || row >= (int)m_Objects.size())
 		return false;
 
-	CTextDlg::ShowObject(m_hWnd, m_Objects[row]);
+	// a reference (or an embedded object or array) opens what it holds; anywhere else, the object's properties
+	if (col >= 0) {
+		auto index = GetColumnManager(m_List)->GetColumnTag<int>(col);
+		if (index < (int)m_Columns.size()) {
+			auto& column = m_Columns[index];
+			CComVariant value;
+			if (SUCCEEDED(m_Objects[row]->Get(column.Name, 0, &value, nullptr, nullptr)) &&
+				CObjectDlg::ShowValue(m_hWnd, m_spSvc, column.Name, value, column.Type))
+				return true;
+		}
+	}
+	CObjectDlg dlg(m_spSvc, m_Objects[row]);
+	dlg.DoModal(m_hWnd);
 	return true;
 }
 
@@ -152,6 +176,11 @@ LRESULT CQueryDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&) {
 }
 
 LRESULT CQueryDlg::OnRun(WORD, WORD, HWND, BOOL&) {
+	RunQuery();
+	return 0;
+}
+
+void CQueryDlg::RunQuery() {
 	CString ns, query;
 	GetDlgItemText(IDC_NAMESPACE, ns);
 	GetDlgItemText(IDC_QUERY, query);
@@ -160,10 +189,11 @@ LRESULT CQueryDlg::OnRun(WORD, WORD, HWND, BOOL&) {
 	if (ns.IsEmpty())
 		ns = L"ROOT\\CIMV2";
 	if (query.IsEmpty())
-		return 0;
+		return;
 
 	Cancel();
 	m_Objects.clear();
+	m_spSvc.Release();
 	m_List.SetItemCount(0);
 
 	CComPtr<IWbemServices> spSvc;
@@ -174,14 +204,14 @@ LRESULT CQueryDlg::OnRun(WORD, WORD, HWND, BOOL&) {
 	}
 	if (FAILED(hr)) {
 		SetDlgItemText(IDC_STATUS, std::format(L"Error opening {}: {}", (PCWSTR)ns, (PCWSTR)WMIHelper::GetErrorText(hr)).c_str());
-		return 0;
+		return;
 	}
 
+	m_spSvc = spSvc;
 	m_StartTime = ::GetTickCount();
 	m_Job = WMIHelper::ExecQueryAsync(m_hWnd, WM_QUERY_DONE, query, spSvc);
 	SetDlgItemText(IDC_STATUS, L"Running...");
 	UpdateButtons();
-	return 0;
 }
 
 LRESULT CQueryDlg::OnQueryDone(UINT, WPARAM, LPARAM lParam, BOOL&) {
